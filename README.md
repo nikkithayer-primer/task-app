@@ -31,7 +31,7 @@ A mobile-optimized task tracker for logging finances and media consumption. Buil
 ## Technical Stack
 
 - **Frontend**: HTML5, CSS3, JavaScript (ES6+)
-- **Storage**: Server-side API with local storage fallback
+- **Storage**: GitHub API with local storage fallback
 - **Architecture**: Modular JavaScript with separation of concerns
 
 ## File Structure
@@ -53,39 +53,69 @@ task-app/
 
 ## Setup Instructions
 
-### For GitHub Pages Deployment
+### Quick Start (GitHub Pages + GitHub Storage)
 
-1. **Clone or download this repository**
-2. **Update API configuration** in `js/config.js`:
+1. **Fork this repository** to your GitHub account
+2. **Enable GitHub Pages** in repository settings (Pages → Source: Deploy from a branch → main)
+3. **Update configuration** in `js/config.js`:
    ```javascript
-   const Config = {
-       API_BASE_URL: 'https://your-api-server.com',
-       // ... other settings
-   };
+   GITHUB: {
+       OWNER: 'your-username', // Your GitHub username
+       REPO: 'task-app',       // Your repository name
+       BRANCH: 'main',         // Your default branch
+       // ... other settings stay the same
+   }
    ```
-3. **Push to GitHub repository**
-4. **Enable GitHub Pages** in repository settings
-5. **Access your site** at `https://yourusername.github.io/task-app`
+4. **Access your site** at `https://yourusername.github.io/task-app`
+5. **Set up GitHub token** (see below)
 
-### For Server-Side Storage
+### GitHub Token Setup
 
-To enable shared storage between you and your husband, you'll need to:
+To enable data syncing between devices, you need a GitHub Personal Access Token:
 
-1. **Set up a backend API** that supports:
-   - `GET /finances` - Get all finance entries
-   - `POST /finances` - Add new finance entry
-   - `DELETE /finances/:id` - Delete finance entry
-   - `GET /media` - Get all media entries
-   - `POST /media` - Add new media entry
-   - `DELETE /media/:id` - Delete media entry
+#### Step 1: Create Token
+1. Go to [GitHub Settings → Developer settings → Personal access tokens](https://github.com/settings/tokens)
+2. Click **"Generate new token (classic)"**
+3. Give it a name like **"Task Tracker"**
+4. Set expiration (recommend "No expiration" for convenience)
+5. Select scopes:
+   - For **public repository**: Check `public_repo`
+   - For **private repository**: Check `repo`
+6. Click **"Generate token"**
+7. **Copy the token immediately** (you won't see it again!)
 
-2. **Update the API_BASE_URL** in `js/config.js`
+#### Step 2: Add Token to App
+1. Open your task tracker site
+2. A setup modal will appear automatically
+3. Paste your token and click **"Save Token"**
+4. Or skip for local-only storage
 
-3. **Optional**: Add authentication to prevent unauthorized access
+#### Alternative: Manual Setup
+```javascript
+// In browser console:
+Config.setGitHubToken('your_token_here');
+```
 
-### Fallback Mode
+### Data Storage
 
-If no server is available, the app automatically falls back to local storage. Each person's data will be stored locally on their device.
+The app uses a hybrid approach:
+
+1. **Primary**: GitHub repository (`data/finances.json` and `data/media.json`)
+2. **Fallback**: Browser localStorage (when GitHub unavailable)
+3. **Sync**: Automatic backup to localStorage for offline access
+
+### Repository Structure
+
+After first use, your repository will contain:
+```
+task-app/
+├── data/
+│   ├── finances.json    # Your finance entries
+│   └── media.json       # Your media entries
+├── js/
+├── index.html
+└── ... (other app files)
+```
 
 ## Usage
 
@@ -137,15 +167,76 @@ const Config = {
 - **Chrome Android**: Optimized for Android devices
 - **Desktop browsers**: Enhanced experience with mouse support
 
+## Sharing Data
+
+### For Couples/Multiple Users
+
+Both you and your husband can access the same data:
+
+1. **Same GitHub account**: Both use the same token (easiest)
+2. **Separate accounts**: Add collaborator to repository
+   - Go to repository Settings → Manage access
+   - Click "Add people" 
+   - Add your husband's GitHub username
+   - He can then create his own token with access to your repo
+
+### Privacy & Security
+
+- **Tokens**: Store securely, don't share publicly
+- **Repository**: Can be private (requires `repo` scope) or public (`public_repo` scope)
+- **Data**: Stored as JSON files in your GitHub repository
+- **Backup**: Always synced to localStorage for offline access
+
+## Troubleshooting
+
+### Common Issues
+
+**"GitHub API error: 401"**
+- Token expired or invalid
+- Wrong scopes selected
+- Solution: Generate new token with correct scopes
+
+**"GitHub API error: 404"**
+- Repository name/owner incorrect in config.js
+- Solution: Check OWNER and REPO settings
+
+**Data not syncing**
+- Check browser console for errors
+- Verify token is saved: `Config.getGitHubToken()`
+- Try manual sync: `Storage.syncLocalToGitHub()`
+
+**Rate limiting**
+- GitHub allows 5000 API calls/hour with token
+- For normal use, you won't hit this limit
+- If you do, data falls back to localStorage
+
+### Manual Commands
+
+Open browser console (F12) for advanced operations:
+
+```javascript
+// Check current token
+Config.getGitHubToken()
+
+// Set new token
+Config.setGitHubToken('your_new_token')
+
+// Force sync local data to GitHub
+Storage.syncLocalToGitHub()
+
+// Clear all local data
+localStorage.clear()
+```
+
 ## Future Enhancements
 
-- [ ] Push notifications for spending alerts
 - [ ] Data visualization and charts
 - [ ] Export data to CSV/JSON
 - [ ] Categories and tags
 - [ ] Search and filtering
 - [ ] Dark mode support
-- [ ] Offline mode with sync
+- [ ] Conflict resolution for simultaneous edits
+- [ ] Data import from other formats
 
 ## Contributing
 

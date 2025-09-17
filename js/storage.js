@@ -1,6 +1,6 @@
 /**
- * Storage module for handling data persistence
- * Handles both server-side API calls and local storage fallback
+ * Storage module for handling data persistence via GitHub API
+ * Uses GitHub repository as a database with JSON files
  */
 
 const Storage = {
@@ -8,34 +8,109 @@ const Storage = {
      * Initialize storage system
      */
     init() {
-        console.log('Storage system initialized');
+        console.log('GitHub storage system initialized');
+        this.checkGitHubAuth();
     },
 
     /**
-     * Generic API request handler
-     * @param {string} url - API endpoint
+     * Check if GitHub token is available
+     */
+    checkGitHubAuth() {
+        const token = Config.getGitHubToken();
+        if (!token) {
+            console.warn('No GitHub token found. Data will only be stored locally.');
+            console.log('To enable syncing, set a GitHub token: Config.setGitHubToken("your_token")');
+        }
+    },
+
+    /**
+     * Generic GitHub API request handler
+     * @param {string} endpoint - GitHub API endpoint
      * @param {Object} options - Request options
      * @returns {Promise} - Response data
      */
-    async apiRequest(url, options = {}) {
+    async githubRequest(endpoint, options = {}) {
+        const token = Config.getGitHubToken();
+        if (!token) {
+            throw new Error('No GitHub token available');
+        }
+
+        const url = `${Config.GITHUB_API_BASE}${endpoint}`;
+        
+        const response = await fetch(url, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/vnd.github.v3+json',
+                'Content-Type': 'application/json',
+                ...options.headers
+            },
+            ...options
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(`GitHub API error: ${response.status} - ${errorData.message || response.statusText}`);
+        }
+
+        return await response.json();
+    },
+
+    /**
+     * Get file content from GitHub
+     * @param {string} filename - Name of file to get
+     * @returns {Promise<Object>} - File data and metadata
+     */
+    async getGitHubFile(filename) {
+        const path = `${Config.GITHUB.DATA_PATH}/${filename}`;
+        const endpoint = `/repos/${Config.GITHUB.OWNER}/${Config.GITHUB.REPO}/contents/${path}`;
+        
         try {
-            const response = await fetch(url, {
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...options.headers
-                },
-                ...options
-            });
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            return await response.json();
+            const fileData = await this.githubRequest(endpoint);
+            const content = JSON.parse(atob(fileData.content));
+            return {
+                data: content,
+                sha: fileData.sha
+            };
         } catch (error) {
-            console.warn('API request failed, falling back to local storage:', error);
+            if (error.message.includes('404')) {
+                // File doesn't exist yet
+                return {
+                    data: [],
+                    sha: null
+                };
+            }
             throw error;
         }
+    },
+
+    /**
+     * Save file content to GitHub
+     * @param {string} filename - Name of file to save
+     * @param {Array} data - Data to save
+     * @param {string} sha - Current file SHA (for updates)
+     * @returns {Promise<Object>} - Updated file info
+     */
+    async saveGitHubFile(filename, data, sha = null) {
+        const path = `${Config.GITHUB.DATA_PATH}/${filename}`;
+        const endpoint = `/repos/${Config.GITHUB.OWNER}/${Config.GITHUB.REPO}/contents/${path}`;
+        
+        const content = btoa(JSON.stringify(data, null, 2));
+        const message = `Update ${filename} - ${new Date().toISOString()}`;
+
+        const body = {
+            message,
+            content,
+            branch: Config.GITHUB.BRANCH
+        };
+
+        if (sha) {
+            body.sha = sha;
+        }
+
+        return await this.githubRequest(endpoint, {
+            method: 'PUT',
+            body: JSON.stringify(body)
+        });
     },
 
     /**
@@ -52,14 +127,19 @@ const Storage = {
         };
 
         try {
-            // Try API first
-            const response = await this.apiRequest(`${Config.API_BASE_URL}${Config.ENDPOINTS.FINANCES}`, {
-                method: 'POST',
-                body: JSON.stringify(entryWithTimestamp)
-            });
-            return response;
+            // Try GitHub first
+            const fileData = await this.getGitHubFile(Config.GITHUB.FILES.FINANCES);
+            const entries = fileData.data;
+            entries.push(entryWithTimestamp);
+            
+            await this.saveGitHubFile(Config.GITHUB.FILES.FINANCES, entries, fileData.sha);
+            
+            // Also save to localStorage as backup
+            this.saveToLocalStorage('finances', entryWithTimestamp);
+            
+            return entryWithTimestamp;
         } catch (error) {
-            // Fallback to local storage
+            console.warn('GitHub save failed, using localStorage:', error);
             return this.saveToLocalStorage('finances', entryWithTimestamp);
         }
     },
@@ -78,14 +158,19 @@ const Storage = {
         };
 
         try {
-            // Try API first
-            const response = await this.apiRequest(`${Config.API_BASE_URL}${Config.ENDPOINTS.MEDIA}`, {
-                method: 'POST',
-                body: JSON.stringify(entryWithTimestamp)
-            });
-            return response;
+            // Try GitHub first
+            const fileData = await this.getGitHubFile(Config.GITHUB.FILES.MEDIA);
+            const entries = fileData.data;
+            entries.push(entryWithTimestamp);
+            
+            await this.saveGitHubFile(Config.GITHUB.FILES.MEDIA, entries, fileData.sha);
+            
+            // Also save to localStorage as backup
+            this.saveToLocalStorage('media', entryWithTimestamp);
+            
+            return entryWithTimestamp;
         } catch (error) {
-            // Fallback to local storage
+            console.warn('GitHub save failed, using localStorage:', error);
             return this.saveToLocalStorage('media', entryWithTimestamp);
         }
     },
@@ -96,11 +181,11 @@ const Storage = {
      */
     async getFinances() {
         try {
-            // Try API first
-            const response = await this.apiRequest(`${Config.API_BASE_URL}${Config.ENDPOINTS.FINANCES}`);
-            return response || [];
+            // Try GitHub first
+            const fileData = await this.getGitHubFile(Config.GITHUB.FILES.FINANCES);
+            return fileData.data || [];
         } catch (error) {
-            // Fallback to local storage
+            console.warn('GitHub read failed, using localStorage:', error);
             return this.getFromLocalStorage('finances');
         }
     },
@@ -111,11 +196,11 @@ const Storage = {
      */
     async getMedia() {
         try {
-            // Try API first
-            const response = await this.apiRequest(`${Config.API_BASE_URL}${Config.ENDPOINTS.MEDIA}`);
-            return response || [];
+            // Try GitHub first
+            const fileData = await this.getGitHubFile(Config.GITHUB.FILES.MEDIA);
+            return fileData.data || [];
         } catch (error) {
-            // Fallback to local storage
+            console.warn('GitHub read failed, using localStorage:', error);
             return this.getFromLocalStorage('media');
         }
     },
@@ -127,13 +212,18 @@ const Storage = {
      */
     async deleteFinance(id) {
         try {
-            // Try API first
-            await this.apiRequest(`${Config.API_BASE_URL}${Config.ENDPOINTS.FINANCES}/${id}`, {
-                method: 'DELETE'
-            });
+            // Try GitHub first
+            const fileData = await this.getGitHubFile(Config.GITHUB.FILES.FINANCES);
+            const entries = fileData.data.filter(entry => entry.id !== id);
+            
+            await this.saveGitHubFile(Config.GITHUB.FILES.FINANCES, entries, fileData.sha);
+            
+            // Also update localStorage
+            this.deleteFromLocalStorage('finances', id);
+            
             return true;
         } catch (error) {
-            // Fallback to local storage
+            console.warn('GitHub delete failed, using localStorage:', error);
             return this.deleteFromLocalStorage('finances', id);
         }
     },
@@ -145,14 +235,81 @@ const Storage = {
      */
     async deleteMedia(id) {
         try {
-            // Try API first
-            await this.apiRequest(`${Config.API_BASE_URL}${Config.ENDPOINTS.MEDIA}/${id}`, {
-                method: 'DELETE'
-            });
+            // Try GitHub first
+            const fileData = await this.getGitHubFile(Config.GITHUB.FILES.MEDIA);
+            const entries = fileData.data.filter(entry => entry.id !== id);
+            
+            await this.saveGitHubFile(Config.GITHUB.FILES.MEDIA, entries, fileData.sha);
+            
+            // Also update localStorage
+            this.deleteFromLocalStorage('media', id);
+            
             return true;
         } catch (error) {
-            // Fallback to local storage
+            console.warn('GitHub delete failed, using localStorage:', error);
             return this.deleteFromLocalStorage('media', id);
+        }
+    },
+
+    /**
+     * Update a finance entry
+     * @param {string} id - Entry ID
+     * @param {Object} updates - Fields to update
+     * @returns {Promise<Object>} - Updated entry
+     */
+    async updateFinance(id, updates) {
+        try {
+            // Try GitHub first
+            const fileData = await this.getGitHubFile(Config.GITHUB.FILES.FINANCES);
+            const entries = fileData.data;
+            const entryIndex = entries.findIndex(entry => entry.id === id);
+            
+            if (entryIndex === -1) {
+                throw new Error('Entry not found');
+            }
+
+            entries[entryIndex] = { ...entries[entryIndex], ...updates };
+            
+            await this.saveGitHubFile(Config.GITHUB.FILES.FINANCES, entries, fileData.sha);
+            
+            // Also update localStorage
+            this.updateInLocalStorage('finances', id, updates);
+            
+            return entries[entryIndex];
+        } catch (error) {
+            console.warn('GitHub update failed, using localStorage:', error);
+            return this.updateInLocalStorage('finances', id, updates);
+        }
+    },
+
+    /**
+     * Update a media entry
+     * @param {string} id - Entry ID
+     * @param {Object} updates - Fields to update
+     * @returns {Promise<Object>} - Updated entry
+     */
+    async updateMedia(id, updates) {
+        try {
+            // Try GitHub first
+            const fileData = await this.getGitHubFile(Config.GITHUB.FILES.MEDIA);
+            const entries = fileData.data;
+            const entryIndex = entries.findIndex(entry => entry.id === id);
+            
+            if (entryIndex === -1) {
+                throw new Error('Entry not found');
+            }
+
+            entries[entryIndex] = { ...entries[entryIndex], ...updates };
+            
+            await this.saveGitHubFile(Config.GITHUB.FILES.MEDIA, entries, fileData.sha);
+            
+            // Also update localStorage
+            this.updateInLocalStorage('media', id, updates);
+            
+            return entries[entryIndex];
+        } catch (error) {
+            console.warn('GitHub update failed, using localStorage:', error);
+            return this.updateInLocalStorage('media', id, updates);
         }
     },
 
@@ -196,46 +353,6 @@ const Storage = {
     },
 
     /**
-     * Update a finance entry
-     * @param {string} id - Entry ID
-     * @param {Object} updates - Fields to update
-     * @returns {Promise<Object>} - Updated entry
-     */
-    async updateFinance(id, updates) {
-        try {
-            // Try API first (would be a PATCH request in real implementation)
-            const response = await this.apiRequest(`${Config.API_BASE_URL}${Config.ENDPOINTS.FINANCES}/${id}`, {
-                method: 'PATCH',
-                body: JSON.stringify(updates)
-            });
-            return response;
-        } catch (error) {
-            // Fallback to local storage
-            return this.updateInLocalStorage('finances', id, updates);
-        }
-    },
-
-    /**
-     * Update a media entry
-     * @param {string} id - Entry ID
-     * @param {Object} updates - Fields to update
-     * @returns {Promise<Object>} - Updated entry
-     */
-    async updateMedia(id, updates) {
-        try {
-            // Try API first (would be a PATCH request in real implementation)
-            const response = await this.apiRequest(`${Config.API_BASE_URL}${Config.ENDPOINTS.MEDIA}/${id}`, {
-                method: 'PATCH',
-                body: JSON.stringify(updates)
-            });
-            return response;
-        } catch (error) {
-            // Fallback to local storage
-            return this.updateInLocalStorage('media', id, updates);
-        }
-    },
-
-    /**
      * Update entry in local storage (fallback)
      * @param {string} type - Data type (finances/media)
      * @param {string} id - Entry ID to update
@@ -251,7 +368,6 @@ const Storage = {
             throw new Error('Entry not found');
         }
 
-        // Update the entry
         existing[entryIndex] = { ...existing[entryIndex], ...updates };
         localStorage.setItem(key, JSON.stringify(existing));
         
@@ -264,6 +380,46 @@ const Storage = {
      */
     generateId() {
         return Date.now().toString(36) + Math.random().toString(36).substr(2);
+    },
+
+    /**
+     * Sync localStorage data to GitHub (useful for initial setup)
+     * @returns {Promise<Object>} - Sync results
+     */
+    async syncLocalToGitHub() {
+        try {
+            const localFinances = this.getFromLocalStorage('finances');
+            const localMedia = this.getFromLocalStorage('media');
+
+            const results = {
+                finances: { synced: 0, errors: 0 },
+                media: { synced: 0, errors: 0 }
+            };
+
+            if (localFinances.length > 0) {
+                try {
+                    await this.saveGitHubFile(Config.GITHUB.FILES.FINANCES, localFinances);
+                    results.finances.synced = localFinances.length;
+                } catch (error) {
+                    results.finances.errors = 1;
+                    console.error('Failed to sync finances:', error);
+                }
+            }
+
+            if (localMedia.length > 0) {
+                try {
+                    await this.saveGitHubFile(Config.GITHUB.FILES.MEDIA, localMedia);
+                    results.media.synced = localMedia.length;
+                } catch (error) {
+                    results.media.errors = 1;
+                    console.error('Failed to sync media:', error);
+                }
+            }
+
+            return results;
+        } catch (error) {
+            console.error('Sync failed:', error);
+            throw error;
+        }
     }
 };
-
