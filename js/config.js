@@ -6,7 +6,7 @@
 const Config = {
     // GitHub Configuration
     GITHUB: {
-        OWNER: 'nicolethayer', // Replace with your GitHub username
+        OWNER: 'nikkithayer-primer', // Replace with your GitHub username
         REPO: 'task-app', // Replace with your repository name
         BRANCH: 'main', // or 'master' depending on your default branch
         DATA_PATH: 'data', // folder in repo to store data files
