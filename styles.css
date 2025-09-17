@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&display=swap');
 
 /* Reset and base styles */
 * {
@@ -30,7 +29,7 @@
 }
 
 body {
-    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     line-height: 1.6;
     color: var(--color-primary-text);
     background: var(--color-hover-bg);
@@ -40,7 +39,7 @@ body {
 .container {
     max-width: 800px;
     margin: 0 auto;
-    padding: 10px;
+    padding: 0 10px;
 }
 
 /* Header */
@@ -470,7 +469,7 @@ header p {
 /* Desktop Enhancement - Mobile First Design */
 @media (min-width: 769px) {
     .container {
-        padding: 20px;
+        padding: 0 20px;
     }
     
     .tab-container {
