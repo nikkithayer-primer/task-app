@@ -51,6 +51,9 @@ const UI = {
                 const invalidInputs = form.querySelectorAll(':invalid');
                 if (invalidInputs.length > 0) {
                     e.preventDefault();
+                    // Mark all inputs as touched when submit is attempted
+                    const allInputs = form.querySelectorAll('input[required]');
+                    allInputs.forEach(input => this.markAsTouched(input));
                     this.showCustomValidation(invalidInputs[0]);
                     invalidInputs[0].focus();
                 }
@@ -61,15 +64,32 @@ const UI = {
         const inputs = document.querySelectorAll('input[required]');
         inputs.forEach(input => {
             input.addEventListener('input', () => {
+                this.markAsTouched(input);
                 this.hideCustomValidation(input);
             });
 
             input.addEventListener('blur', () => {
+                this.markAsTouched(input);
                 if (!input.validity.valid) {
                     this.showCustomValidation(input);
                 }
             });
+
+            input.addEventListener('focus', () => {
+                this.markAsTouched(input);
+            });
         });
+    },
+
+    /**
+     * Mark input as touched (user has interacted with it)
+     * @param {HTMLElement} input - Input element
+     */
+    markAsTouched(input) {
+        const formGroup = input.closest('.form-group');
+        if (formGroup) {
+            formGroup.classList.add('touched');
+        }
     },
 
     /**
@@ -300,6 +320,12 @@ const UI = {
         worthBtns.forEach(btn => {
             btn.dataset.worth = 'true';
             btn.textContent = '👍';
+        });
+
+        // Remove touched and validation states
+        const formGroups = form.querySelectorAll('.form-group');
+        formGroups.forEach(group => {
+            group.classList.remove('touched', 'show-validation');
         });
     },
 

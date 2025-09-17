@@ -320,8 +320,8 @@ body {
     opacity: 1;
 }
 
-/* Invalid input styling */
-.form-group input:invalid {
+/* Invalid input styling - only show after user interaction */
+.form-group.touched input:invalid {
     background: rgba(255, 107, 107, 0.1);
 }
 
