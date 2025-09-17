@@ -11,7 +11,6 @@ const UI = {
         this.bindTabEvents();
         this.bindWorthItEvents();
         this.bindValidationEvents();
-        this.checkGitHubSetup();
         this.showLoading(false);
     },
 
@@ -409,97 +408,6 @@ const UI = {
         await Storage.updateMedia(id, { worthIt });
     },
 
-    /**
-     * Check if GitHub setup is needed
-     */
-    checkGitHubSetup() {
-        const token = Config.getGitHubToken();
-        const setupSkipped = localStorage.getItem('github_setup_skipped');
-        
-        if (!token && !setupSkipped) {
-            // Show setup modal after a short delay
-            setTimeout(() => {
-                this.showGitHubSetup();
-            }, 1000);
-        }
-    },
-
-    /**
-     * Show GitHub setup modal
-     */
-    showGitHubSetup() {
-        const modal = document.getElementById('github-setup-modal');
-        modal.classList.remove('hidden');
-    },
-
-    /**
-     * Hide GitHub setup modal
-     */
-    hideGitHubSetup() {
-        const modal = document.getElementById('github-setup-modal');
-        modal.classList.add('hidden');
-    },
-
-    /**
-     * Save GitHub token from modal
-     */
-    async saveGitHubToken() {
-        const input = document.getElementById('github-token-input');
-        const token = input.value.trim();
-        
-        if (!token) {
-            this.showError('Please enter a GitHub token');
-            return;
-        }
-
-        try {
-            this.showLoading(true);
-            
-            // Test the token by making a simple API call
-            const testResponse = await fetch(`${Config.GITHUB_API_BASE}/user`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/vnd.github.v3+json'
-                }
-            });
-
-            if (!testResponse.ok) {
-                throw new Error('Invalid token');
-            }
-
-            // Save the token
-            Config.setGitHubToken(token);
-            
-            // Try to sync any existing local data
-            try {
-                const syncResults = await Storage.syncLocalToGitHub();
-                console.log('Sync results:', syncResults);
-            } catch (syncError) {
-                console.warn('Initial sync failed:', syncError);
-            }
-            
-            this.hideGitHubSetup();
-            this.showSuccess('GitHub token saved! Data will now sync between devices.');
-            
-            // Reload data from GitHub
-            Finance.loadEntries();
-            Media.loadEntries();
-            
-        } catch (error) {
-            this.showError('Invalid GitHub token. Please check and try again.');
-        } finally {
-            this.showLoading(false);
-        }
-    },
-
-    /**
-     * Skip GitHub setup
-     */
-    skipGitHubSetup() {
-        localStorage.setItem('github_setup_skipped', 'true');
-        this.hideGitHubSetup();
-        this.showSuccess('Using local storage only. Data will not sync between devices.');
-    },
 
     /**
      * Delete entry from UI

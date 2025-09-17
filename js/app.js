@@ -11,8 +11,8 @@ const App = {
         console.log('Task Tracker initializing...');
         
         try {
-            // Initialize storage system
-            Storage.init();
+            // Initialize storage system (Firebase)
+            await Storage.init();
             
             // Initialize UI components
             UI.init();
@@ -25,6 +25,9 @@ const App = {
             
             // Initialize media module
             Media.init();
+            
+            // Set up real-time listeners for live updates
+            this.setupRealtimeSync();
             
             // Set up error handling
             this.setupErrorHandling();
@@ -54,6 +57,24 @@ const App = {
             UI.showError('An unexpected error occurred');
             event.preventDefault();
         });
+    },
+
+    /**
+     * Set up real-time synchronization
+     */
+    setupRealtimeSync() {
+        Storage.setupRealtimeListeners(
+            // On finances change
+            (entries) => {
+                console.log('Finances updated via real-time sync');
+                UI.displayFinances(entries);
+            },
+            // On media change
+            (entries) => {
+                console.log('Media updated via real-time sync');
+                UI.displayMedia(entries);
+            }
+        );
     },
 
     /**

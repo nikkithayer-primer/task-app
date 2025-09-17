@@ -4,20 +4,22 @@
  */
 
 const Config = {
-    // GitHub Configuration
-    GITHUB: {
-        OWNER: 'nikkithayer-primer', // Replace with your GitHub username
-        REPO: 'task-app', // Replace with your repository name
-        BRANCH: 'main', // or 'master' depending on your default branch
-        DATA_PATH: 'data', // folder in repo to store data files
-        FILES: {
-            FINANCES: 'finances.json',
-            MEDIA: 'media.json'
-        }
+    // Firebase Configuration
+    // You'll get these values from Firebase Console after creating your project
+    FIREBASE: {
+        apiKey: "AIzaSyBblibC6rilmjCgGtMATmed9kTYUQjhoZQ",
+        authDomain: "finance-media-tracker.firebaseapp.com",
+        projectId: "finance-media-tracker",
+        storageBucket: "finance-media-tracker.firebasestorage.app",
+        messagingSenderId: "70447292384",
+        appId: "1:70447292384:web:4e12561236ae6c9bcc9585"
     },
     
-    // GitHub API
-    GITHUB_API_BASE: 'https://api.github.com',
+    // Firestore Collections
+    COLLECTIONS: {
+        FINANCES: 'finances',
+        MEDIA: 'media'
+    },
     
     // App Settings
     SWIPE_THRESHOLD: 100, // pixels to swipe before delete
@@ -30,17 +32,6 @@ const Config = {
     STORAGE_KEYS: {
         FINANCES: 'task_tracker_finances',
         MEDIA: 'task_tracker_media'
-    },
-    
-    // GitHub Personal Access Token (set this in browser localStorage)
-    // Instructions: Create token at https://github.com/settings/tokens
-    // Required scopes: repo (for private repos) or public_repo (for public repos)
-    getGitHubToken() {
-        return localStorage.getItem('github_token');
-    },
-    
-    setGitHubToken(token) {
-        localStorage.setItem('github_token', token);
     }
 };
 

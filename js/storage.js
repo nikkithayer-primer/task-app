@@ -1,116 +1,42 @@
 /**
- * Storage module for handling data persistence via GitHub API
- * Uses GitHub repository as a database with JSON files
+ * Storage module for handling data persistence via Firebase Firestore
+ * Uses Firebase Firestore for real-time syncing with local storage fallback
  */
 
 const Storage = {
+    // Firebase app and database instances
+    app: null,
+    db: null,
+    
     /**
-     * Initialize storage system
+     * Initialize Firebase and storage system
      */
-    init() {
-        console.log('GitHub storage system initialized');
-        this.checkGitHubAuth();
-    },
-
-    /**
-     * Check if GitHub token is available
-     */
-    checkGitHubAuth() {
-        const token = Config.getGitHubToken();
-        if (!token) {
-            console.warn('No GitHub token found. Data will only be stored locally.');
-            console.log('To enable syncing, set a GitHub token: Config.setGitHubToken("your_token")');
-        }
-    },
-
-    /**
-     * Generic GitHub API request handler
-     * @param {string} endpoint - GitHub API endpoint
-     * @param {Object} options - Request options
-     * @returns {Promise} - Response data
-     */
-    async githubRequest(endpoint, options = {}) {
-        const token = Config.getGitHubToken();
-        if (!token) {
-            throw new Error('No GitHub token available');
-        }
-
-        const url = `${Config.GITHUB_API_BASE}${endpoint}`;
-        
-        const response = await fetch(url, {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Accept': 'application/vnd.github.v3+json',
-                'Content-Type': 'application/json',
-                ...options.headers
-            },
-            ...options
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(`GitHub API error: ${response.status} - ${errorData.message || response.statusText}`);
-        }
-
-        return await response.json();
-    },
-
-    /**
-     * Get file content from GitHub
-     * @param {string} filename - Name of file to get
-     * @returns {Promise<Object>} - File data and metadata
-     */
-    async getGitHubFile(filename) {
-        const path = `${Config.GITHUB.DATA_PATH}/${filename}`;
-        const endpoint = `/repos/${Config.GITHUB.OWNER}/${Config.GITHUB.REPO}/contents/${path}`;
-        
+    async init() {
         try {
-            const fileData = await this.githubRequest(endpoint);
-            const content = JSON.parse(atob(fileData.content));
-            return {
-                data: content,
-                sha: fileData.sha
-            };
+            // Initialize Firebase
+            this.app = firebase.initializeApp(Config.FIREBASE);
+            this.db = firebase.firestore();
+            
+            // Configure Firestore settings
+            this.db.settings({
+                cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
+            });
+            
+            // Enable offline persistence
+            await this.db.enablePersistence({ synchronizeTabs: true });
+            
+            console.log('Firebase storage system initialized');
         } catch (error) {
-            if (error.message.includes('404')) {
-                // File doesn't exist yet
-                return {
-                    data: [],
-                    sha: null
-                };
-            }
-            throw error;
+            console.warn('Firebase initialization failed, using localStorage only:', error);
         }
     },
 
     /**
-     * Save file content to GitHub
-     * @param {string} filename - Name of file to save
-     * @param {Array} data - Data to save
-     * @param {string} sha - Current file SHA (for updates)
-     * @returns {Promise<Object>} - Updated file info
+     * Check if Firebase is available
+     * @returns {boolean} - Whether Firebase is initialized
      */
-    async saveGitHubFile(filename, data, sha = null) {
-        const path = `${Config.GITHUB.DATA_PATH}/${filename}`;
-        const endpoint = `/repos/${Config.GITHUB.OWNER}/${Config.GITHUB.REPO}/contents/${path}`;
-        
-        const content = btoa(JSON.stringify(data, null, 2));
-        const message = `Update ${filename} - ${new Date().toISOString()}`;
-
-        const body = {
-            message,
-            content,
-            branch: Config.GITHUB.BRANCH
-        };
-
-        if (sha) {
-            body.sha = sha;
-        }
-
-        return await this.githubRequest(endpoint, {
-            method: 'PUT',
-            body: JSON.stringify(body)
-        });
+    isFirebaseAvailable() {
+        return this.db !== null;
     },
 
     /**
@@ -122,25 +48,35 @@ const Storage = {
         const entryWithTimestamp = {
             ...entry,
             id: this.generateId(),
-            timestamp: new Date().toISOString(),
+            timestamp: firebase.firestore.Timestamp.now(),
+            createdAt: new Date().toISOString(),
             type: 'finance'
         };
 
         try {
-            // Try GitHub first
-            const fileData = await this.getGitHubFile(Config.GITHUB.FILES.FINANCES);
-            const entries = fileData.data;
-            entries.push(entryWithTimestamp);
-            
-            await this.saveGitHubFile(Config.GITHUB.FILES.FINANCES, entries, fileData.sha);
+            if (this.isFirebaseAvailable()) {
+                // Add to Firestore
+                await this.db.collection(Config.COLLECTIONS.FINANCES)
+                    .doc(entryWithTimestamp.id)
+                    .set(entryWithTimestamp);
+                
+                console.log('Finance entry saved to Firestore');
+            } else {
+                throw new Error('Firebase not available');
+            }
             
             // Also save to localStorage as backup
             this.saveToLocalStorage('finances', entryWithTimestamp);
             
             return entryWithTimestamp;
         } catch (error) {
-            console.warn('GitHub save failed, using localStorage:', error);
-            return this.saveToLocalStorage('finances', entryWithTimestamp);
+            console.warn('Firestore save failed, using localStorage:', error);
+            // Convert timestamp for localStorage
+            const localEntry = {
+                ...entryWithTimestamp,
+                timestamp: entryWithTimestamp.createdAt
+            };
+            return this.saveToLocalStorage('finances', localEntry);
         }
     },
 
@@ -153,25 +89,35 @@ const Storage = {
         const entryWithTimestamp = {
             ...entry,
             id: this.generateId(),
-            timestamp: new Date().toISOString(),
+            timestamp: firebase.firestore.Timestamp.now(),
+            createdAt: new Date().toISOString(),
             type: 'media'
         };
 
         try {
-            // Try GitHub first
-            const fileData = await this.getGitHubFile(Config.GITHUB.FILES.MEDIA);
-            const entries = fileData.data;
-            entries.push(entryWithTimestamp);
-            
-            await this.saveGitHubFile(Config.GITHUB.FILES.MEDIA, entries, fileData.sha);
+            if (this.isFirebaseAvailable()) {
+                // Add to Firestore
+                await this.db.collection(Config.COLLECTIONS.MEDIA)
+                    .doc(entryWithTimestamp.id)
+                    .set(entryWithTimestamp);
+                
+                console.log('Media entry saved to Firestore');
+            } else {
+                throw new Error('Firebase not available');
+            }
             
             // Also save to localStorage as backup
             this.saveToLocalStorage('media', entryWithTimestamp);
             
             return entryWithTimestamp;
         } catch (error) {
-            console.warn('GitHub save failed, using localStorage:', error);
-            return this.saveToLocalStorage('media', entryWithTimestamp);
+            console.warn('Firestore save failed, using localStorage:', error);
+            // Convert timestamp for localStorage
+            const localEntry = {
+                ...entryWithTimestamp,
+                timestamp: entryWithTimestamp.createdAt
+            };
+            return this.saveToLocalStorage('media', localEntry);
         }
     },
 
@@ -181,11 +127,29 @@ const Storage = {
      */
     async getFinances() {
         try {
-            // Try GitHub first
-            const fileData = await this.getGitHubFile(Config.GITHUB.FILES.FINANCES);
-            return fileData.data || [];
+            if (this.isFirebaseAvailable()) {
+                const snapshot = await this.db.collection(Config.COLLECTIONS.FINANCES)
+                    .orderBy('timestamp', 'desc')
+                    .get();
+                
+                const entries = snapshot.docs.map(doc => {
+                    const data = doc.data();
+                    // Convert Firestore timestamp to ISO string for consistency
+                    if (data.timestamp && data.timestamp.toDate) {
+                        data.timestamp = data.timestamp.toDate().toISOString();
+                    }
+                    return data;
+                });
+                
+                // Update localStorage cache
+                localStorage.setItem(Config.STORAGE_KEYS.FINANCES, JSON.stringify(entries));
+                
+                return entries;
+            } else {
+                throw new Error('Firebase not available');
+            }
         } catch (error) {
-            console.warn('GitHub read failed, using localStorage:', error);
+            console.warn('Firestore read failed, using localStorage:', error);
             return this.getFromLocalStorage('finances');
         }
     },
@@ -196,11 +160,29 @@ const Storage = {
      */
     async getMedia() {
         try {
-            // Try GitHub first
-            const fileData = await this.getGitHubFile(Config.GITHUB.FILES.MEDIA);
-            return fileData.data || [];
+            if (this.isFirebaseAvailable()) {
+                const snapshot = await this.db.collection(Config.COLLECTIONS.MEDIA)
+                    .orderBy('timestamp', 'desc')
+                    .get();
+                
+                const entries = snapshot.docs.map(doc => {
+                    const data = doc.data();
+                    // Convert Firestore timestamp to ISO string for consistency
+                    if (data.timestamp && data.timestamp.toDate) {
+                        data.timestamp = data.timestamp.toDate().toISOString();
+                    }
+                    return data;
+                });
+                
+                // Update localStorage cache
+                localStorage.setItem(Config.STORAGE_KEYS.MEDIA, JSON.stringify(entries));
+                
+                return entries;
+            } else {
+                throw new Error('Firebase not available');
+            }
         } catch (error) {
-            console.warn('GitHub read failed, using localStorage:', error);
+            console.warn('Firestore read failed, using localStorage:', error);
             return this.getFromLocalStorage('media');
         }
     },
@@ -212,18 +194,19 @@ const Storage = {
      */
     async deleteFinance(id) {
         try {
-            // Try GitHub first
-            const fileData = await this.getGitHubFile(Config.GITHUB.FILES.FINANCES);
-            const entries = fileData.data.filter(entry => entry.id !== id);
-            
-            await this.saveGitHubFile(Config.GITHUB.FILES.FINANCES, entries, fileData.sha);
+            if (this.isFirebaseAvailable()) {
+                await this.db.collection(Config.COLLECTIONS.FINANCES).doc(id).delete();
+                console.log('Finance entry deleted from Firestore');
+            } else {
+                throw new Error('Firebase not available');
+            }
             
             // Also update localStorage
             this.deleteFromLocalStorage('finances', id);
             
             return true;
         } catch (error) {
-            console.warn('GitHub delete failed, using localStorage:', error);
+            console.warn('Firestore delete failed, using localStorage:', error);
             return this.deleteFromLocalStorage('finances', id);
         }
     },
@@ -235,18 +218,19 @@ const Storage = {
      */
     async deleteMedia(id) {
         try {
-            // Try GitHub first
-            const fileData = await this.getGitHubFile(Config.GITHUB.FILES.MEDIA);
-            const entries = fileData.data.filter(entry => entry.id !== id);
-            
-            await this.saveGitHubFile(Config.GITHUB.FILES.MEDIA, entries, fileData.sha);
+            if (this.isFirebaseAvailable()) {
+                await this.db.collection(Config.COLLECTIONS.MEDIA).doc(id).delete();
+                console.log('Media entry deleted from Firestore');
+            } else {
+                throw new Error('Firebase not available');
+            }
             
             // Also update localStorage
             this.deleteFromLocalStorage('media', id);
             
             return true;
         } catch (error) {
-            console.warn('GitHub delete failed, using localStorage:', error);
+            console.warn('Firestore delete failed, using localStorage:', error);
             return this.deleteFromLocalStorage('media', id);
         }
     },
@@ -259,25 +243,28 @@ const Storage = {
      */
     async updateFinance(id, updates) {
         try {
-            // Try GitHub first
-            const fileData = await this.getGitHubFile(Config.GITHUB.FILES.FINANCES);
-            const entries = fileData.data;
-            const entryIndex = entries.findIndex(entry => entry.id === id);
-            
-            if (entryIndex === -1) {
-                throw new Error('Entry not found');
+            if (this.isFirebaseAvailable()) {
+                await this.db.collection(Config.COLLECTIONS.FINANCES).doc(id).update(updates);
+                console.log('Finance entry updated in Firestore');
+                
+                // Get the updated document
+                const doc = await this.db.collection(Config.COLLECTIONS.FINANCES).doc(id).get();
+                const updatedEntry = doc.data();
+                
+                // Convert timestamp for consistency
+                if (updatedEntry.timestamp && updatedEntry.timestamp.toDate) {
+                    updatedEntry.timestamp = updatedEntry.timestamp.toDate().toISOString();
+                }
+                
+                // Also update localStorage
+                this.updateInLocalStorage('finances', id, updates);
+                
+                return updatedEntry;
+            } else {
+                throw new Error('Firebase not available');
             }
-
-            entries[entryIndex] = { ...entries[entryIndex], ...updates };
-            
-            await this.saveGitHubFile(Config.GITHUB.FILES.FINANCES, entries, fileData.sha);
-            
-            // Also update localStorage
-            this.updateInLocalStorage('finances', id, updates);
-            
-            return entries[entryIndex];
         } catch (error) {
-            console.warn('GitHub update failed, using localStorage:', error);
+            console.warn('Firestore update failed, using localStorage:', error);
             return this.updateInLocalStorage('finances', id, updates);
         }
     },
@@ -290,27 +277,90 @@ const Storage = {
      */
     async updateMedia(id, updates) {
         try {
-            // Try GitHub first
-            const fileData = await this.getGitHubFile(Config.GITHUB.FILES.MEDIA);
-            const entries = fileData.data;
-            const entryIndex = entries.findIndex(entry => entry.id === id);
-            
-            if (entryIndex === -1) {
-                throw new Error('Entry not found');
+            if (this.isFirebaseAvailable()) {
+                await this.db.collection(Config.COLLECTIONS.MEDIA).doc(id).update(updates);
+                console.log('Media entry updated in Firestore');
+                
+                // Get the updated document
+                const doc = await this.db.collection(Config.COLLECTIONS.MEDIA).doc(id).get();
+                const updatedEntry = doc.data();
+                
+                // Convert timestamp for consistency
+                if (updatedEntry.timestamp && updatedEntry.timestamp.toDate) {
+                    updatedEntry.timestamp = updatedEntry.timestamp.toDate().toISOString();
+                }
+                
+                // Also update localStorage
+                this.updateInLocalStorage('media', id, updates);
+                
+                return updatedEntry;
+            } else {
+                throw new Error('Firebase not available');
             }
-
-            entries[entryIndex] = { ...entries[entryIndex], ...updates };
-            
-            await this.saveGitHubFile(Config.GITHUB.FILES.MEDIA, entries, fileData.sha);
-            
-            // Also update localStorage
-            this.updateInLocalStorage('media', id, updates);
-            
-            return entries[entryIndex];
         } catch (error) {
-            console.warn('GitHub update failed, using localStorage:', error);
+            console.warn('Firestore update failed, using localStorage:', error);
             return this.updateInLocalStorage('media', id, updates);
         }
+    },
+
+    /**
+     * Set up real-time listeners for data changes
+     * @param {Function} onFinancesChange - Callback for finance changes
+     * @param {Function} onMediaChange - Callback for media changes
+     */
+    setupRealtimeListeners(onFinancesChange, onMediaChange) {
+        if (!this.isFirebaseAvailable()) {
+            console.warn('Firebase not available, real-time sync disabled');
+            return;
+        }
+
+        // Listen for finance changes
+        this.db.collection(Config.COLLECTIONS.FINANCES)
+            .orderBy('timestamp', 'desc')
+            .onSnapshot((snapshot) => {
+                const entries = snapshot.docs.map(doc => {
+                    const data = doc.data();
+                    // Convert Firestore timestamp to ISO string
+                    if (data.timestamp && data.timestamp.toDate) {
+                        data.timestamp = data.timestamp.toDate().toISOString();
+                    }
+                    return data;
+                });
+                
+                // Update localStorage cache
+                localStorage.setItem(Config.STORAGE_KEYS.FINANCES, JSON.stringify(entries));
+                
+                if (onFinancesChange) {
+                    onFinancesChange(entries);
+                }
+            }, (error) => {
+                console.warn('Finance listener error:', error);
+            });
+
+        // Listen for media changes
+        this.db.collection(Config.COLLECTIONS.MEDIA)
+            .orderBy('timestamp', 'desc')
+            .onSnapshot((snapshot) => {
+                const entries = snapshot.docs.map(doc => {
+                    const data = doc.data();
+                    // Convert Firestore timestamp to ISO string
+                    if (data.timestamp && data.timestamp.toDate) {
+                        data.timestamp = data.timestamp.toDate().toISOString();
+                    }
+                    return data;
+                });
+                
+                // Update localStorage cache
+                localStorage.setItem(Config.STORAGE_KEYS.MEDIA, JSON.stringify(entries));
+                
+                if (onMediaChange) {
+                    onMediaChange(entries);
+                }
+            }, (error) => {
+                console.warn('Media listener error:', error);
+            });
+            
+        console.log('Real-time listeners set up');
     },
 
     /**
@@ -383,10 +433,14 @@ const Storage = {
     },
 
     /**
-     * Sync localStorage data to GitHub (useful for initial setup)
+     * Sync localStorage data to Firestore (useful for migration)
      * @returns {Promise<Object>} - Sync results
      */
-    async syncLocalToGitHub() {
+    async syncLocalToFirestore() {
+        if (!this.isFirebaseAvailable()) {
+            throw new Error('Firebase not available');
+        }
+
         try {
             const localFinances = this.getFromLocalStorage('finances');
             const localMedia = this.getFromLocalStorage('media');
@@ -396,23 +450,41 @@ const Storage = {
                 media: { synced: 0, errors: 0 }
             };
 
-            if (localFinances.length > 0) {
+            // Sync finances
+            for (const entry of localFinances) {
                 try {
-                    await this.saveGitHubFile(Config.GITHUB.FILES.FINANCES, localFinances);
-                    results.finances.synced = localFinances.length;
+                    const firestoreEntry = {
+                        ...entry,
+                        timestamp: firebase.firestore.Timestamp.fromDate(new Date(entry.timestamp || entry.createdAt))
+                    };
+                    
+                    await this.db.collection(Config.COLLECTIONS.FINANCES)
+                        .doc(entry.id)
+                        .set(firestoreEntry);
+                    
+                    results.finances.synced++;
                 } catch (error) {
-                    results.finances.errors = 1;
-                    console.error('Failed to sync finances:', error);
+                    console.error('Failed to sync finance entry:', entry.id, error);
+                    results.finances.errors++;
                 }
             }
 
-            if (localMedia.length > 0) {
+            // Sync media
+            for (const entry of localMedia) {
                 try {
-                    await this.saveGitHubFile(Config.GITHUB.FILES.MEDIA, localMedia);
-                    results.media.synced = localMedia.length;
+                    const firestoreEntry = {
+                        ...entry,
+                        timestamp: firebase.firestore.Timestamp.fromDate(new Date(entry.timestamp || entry.createdAt))
+                    };
+                    
+                    await this.db.collection(Config.COLLECTIONS.MEDIA)
+                        .doc(entry.id)
+                        .set(firestoreEntry);
+                    
+                    results.media.synced++;
                 } catch (error) {
-                    results.media.errors = 1;
-                    console.error('Failed to sync media:', error);
+                    console.error('Failed to sync media entry:', entry.id, error);
+                    results.media.errors++;
                 }
             }
 

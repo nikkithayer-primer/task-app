@@ -116,34 +116,12 @@
         <div class="spinner"></div>
     </div>
 
-    <!-- GitHub Setup Modal -->
-    <div id="github-setup-modal" class="modal hidden">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>GitHub Setup</h3>
-                <button class="modal-close" onclick="UI.hideGitHubSetup()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <p>To sync data between devices, you need a GitHub Personal Access Token:</p>
-                <ol>
-                    <li>Go to <a href="https://github.com/settings/tokens" target="_blank">GitHub Settings → Developer settings → Personal access tokens</a></li>
-                    <li>Click "Generate new token (classic)"</li>
-                    <li>Give it a name like "Task Tracker"</li>
-                    <li>Select scope: <strong>public_repo</strong> (or <strong>repo</strong> if private)</li>
-                    <li>Click "Generate token"</li>
-                    <li>Copy the token and paste it below:</li>
-                </ol>
-                <div class="form-group">
-                    <input type="password" id="github-token-input" placeholder="Paste your GitHub token here" />
-                </div>
-                <div class="modal-actions">
-                    <button onclick="UI.saveGitHubToken()" class="btn-primary">Save Token</button>
-                    <button onclick="UI.skipGitHubSetup()" class="btn-secondary">Skip (Local Only)</button>
-                </div>
-            </div>
-        </div>
-    </div>
 
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+    <!-- App Scripts -->
     <script src="js/config.js"></script>
     <script src="js/storage.js"></script>
     <script src="js/ui.js"></script>

@@ -31,7 +31,8 @@ A mobile-optimized task tracker for logging finances and media consumption. Buil
 ## Technical Stack
 
 - **Frontend**: HTML5, CSS3, JavaScript (ES6+)
-- **Storage**: GitHub API with local storage fallback
+- **Backend**: Firebase Firestore (NoSQL database)
+- **Storage**: Real-time Firebase sync with local storage fallback
 - **Architecture**: Modular JavaScript with separation of concerns
 
 ## File Structure
@@ -53,69 +54,90 @@ task-app/
 
 ## Setup Instructions
 
-### Quick Start (GitHub Pages + GitHub Storage)
+### Quick Start with Firebase (Recommended)
 
-1. **Fork this repository** to your GitHub account
-2. **Enable GitHub Pages** in repository settings (Pages → Source: Deploy from a branch → main)
-3. **Update configuration** in `js/config.js`:
+This setup provides **real-time syncing** with **no user authentication required** - perfect for couples!
+
+#### Step 1: Create Firebase Project
+1. Go to [Firebase Console](https://console.firebase.google.com/)
+2. Click **"Create a project"**
+3. Give it a name like **"task-tracker"**
+4. Disable Google Analytics (not needed)
+5. Click **"Create project"**
+
+#### Step 2: Set Up Firestore Database
+1. In your Firebase project, click **"Firestore Database"**
+2. Click **"Create database"**
+3. Choose **"Start in test mode"** (allows read/write without authentication)
+4. Select a location close to you
+5. Click **"Done"**
+
+#### Step 3: Get Firebase Configuration
+1. In Firebase Console, click the **gear icon** → **"Project settings"**
+2. Scroll down to **"Your apps"** section
+3. Click **"Web app"** icon (`</>`)
+4. Give it a name like **"Task Tracker Web"**
+5. **Copy the config object** (you'll need this next)
+
+#### Step 4: Update Your App Configuration
+1. Open `js/config.js` in your project
+2. Replace the Firebase config with your values:
    ```javascript
-   GITHUB: {
-       OWNER: 'your-username', // Your GitHub username
-       REPO: 'task-app',       // Your repository name
-       BRANCH: 'main',         // Your default branch
-       // ... other settings stay the same
+   FIREBASE: {
+       apiKey: "your-api-key-here",
+       authDomain: "your-project.firebaseapp.com", 
+       projectId: "your-project-id",
+       storageBucket: "your-project.appspot.com",
+       messagingSenderId: "123456789",
+       appId: "your-app-id"
    }
    ```
-4. **Access your site** at `https://yourusername.github.io/task-app`
-5. **Set up GitHub token** (see below)
 
-### GitHub Token Setup
+#### Step 5: Deploy Your App
+**Option A: GitHub Pages**
+1. Fork this repository
+2. Enable GitHub Pages in repository settings
+3. Access at `https://yourusername.github.io/task-app`
 
-To enable data syncing between devices, you need a GitHub Personal Access Token:
+**Option B: Netlify (Recommended)**
+1. Fork this repository
+2. Connect to Netlify
+3. Deploy automatically
+4. Access at your Netlify URL
 
-#### Step 1: Create Token
-1. Go to [GitHub Settings → Developer settings → Personal access tokens](https://github.com/settings/tokens)
-2. Click **"Generate new token (classic)"**
-3. Give it a name like **"Task Tracker"**
-4. Set expiration (recommend "No expiration" for convenience)
-5. Select scopes:
-   - For **public repository**: Check `public_repo`
-   - For **private repository**: Check `repo`
-6. Click **"Generate token"**
-7. **Copy the token immediately** (you won't see it again!)
-
-#### Step 2: Add Token to App
-1. Open your task tracker site
-2. A setup modal will appear automatically
-3. Paste your token and click **"Save Token"**
-4. Or skip for local-only storage
-
-#### Alternative: Manual Setup
-```javascript
-// In browser console:
-Config.setGitHubToken('your_token_here');
-```
+#### Step 6: Configure Firestore Security (Optional but Recommended)
+1. In Firebase Console, go to **Firestore Database** → **Rules**
+2. Replace the rules with:
+   ```javascript
+   rules_version = '2';
+   service cloud.firestore {
+     match /databases/{database}/documents {
+       // Allow read/write to finances and media collections
+       match /{collection}/{document} {
+         allow read, write: if collection in ['finances', 'media'];
+       }
+     }
+   }
+   ```
+3. Click **"Publish"**
 
 ### Data Storage
 
-The app uses a hybrid approach:
+Firebase provides the best experience:
 
-1. **Primary**: GitHub repository (`data/finances.json` and `data/media.json`)
-2. **Fallback**: Browser localStorage (when GitHub unavailable)
-3. **Sync**: Automatic backup to localStorage for offline access
+1. **Real-time sync**: Changes appear instantly on all devices
+2. **Offline support**: Works offline, syncs when connection returns  
+3. **No authentication**: Anyone with the URL can use it
+4. **Automatic backup**: Data cached locally for reliability
+5. **Scalable**: Free tier supports plenty of personal use
 
-### Repository Structure
+### Sharing with Your Husband
 
-After first use, your repository will contain:
-```
-task-app/
-├── data/
-│   ├── finances.json    # Your finance entries
-│   └── media.json       # Your media entries
-├── js/
-├── index.html
-└── ... (other app files)
-```
+Simply share the deployed URL! Both of you can:
+- Add, edit, and delete entries
+- See changes in real-time
+- Use it offline (syncs when back online)
+- No accounts or tokens needed
 
 ## Usage
 
@@ -167,66 +189,72 @@ const Config = {
 - **Chrome Android**: Optimized for Android devices
 - **Desktop browsers**: Enhanced experience with mouse support
 
-## Sharing Data
+## Advanced Features
 
-### For Couples/Multiple Users
+### Real-Time Sync
+- **Instant updates**: Changes appear immediately on all devices
+- **Live collaboration**: Both users can edit simultaneously
+- **Conflict resolution**: Firebase handles concurrent edits automatically
+- **Connection status**: Works seamlessly online and offline
 
-Both you and your husband can access the same data:
-
-1. **Same GitHub account**: Both use the same token (easiest)
-2. **Separate accounts**: Add collaborator to repository
-   - Go to repository Settings → Manage access
-   - Click "Add people" 
-   - Add your husband's GitHub username
-   - He can then create his own token with access to your repo
-
-### Privacy & Security
-
-- **Tokens**: Store securely, don't share publicly
-- **Repository**: Can be private (requires `repo` scope) or public (`public_repo` scope)
-- **Data**: Stored as JSON files in your GitHub repository
-- **Backup**: Always synced to localStorage for offline access
+### Offline Support
+- **Full functionality**: Add, edit, delete entries offline
+- **Automatic sync**: Changes sync when connection returns
+- **Local cache**: Data always available locally
+- **Smart merging**: Firebase resolves conflicts intelligently
 
 ## Troubleshooting
 
 ### Common Issues
 
-**"GitHub API error: 401"**
-- Token expired or invalid
-- Wrong scopes selected
-- Solution: Generate new token with correct scopes
+**"Firebase initialization failed"**
+- Check your Firebase config in `js/config.js`
+- Verify project ID and API key are correct
+- Ensure Firestore is enabled in Firebase Console
 
-**"GitHub API error: 404"**
-- Repository name/owner incorrect in config.js
-- Solution: Check OWNER and REPO settings
+**"Permission denied" errors**
+- Check Firestore security rules
+- Ensure rules allow read/write to `finances` and `media` collections
+- Try resetting to test mode temporarily
 
 **Data not syncing**
 - Check browser console for errors
-- Verify token is saved: `Config.getGitHubToken()`
-- Try manual sync: `Storage.syncLocalToGitHub()`
+- Verify internet connection
+- Try refreshing the page
+- Check Firebase Console for data
 
-**Rate limiting**
-- GitHub allows 5000 API calls/hour with token
-- For normal use, you won't hit this limit
-- If you do, data falls back to localStorage
+**Offline functionality not working**
+- Ensure browser supports IndexedDB
+- Check if persistence is enabled
+- Clear browser cache and try again
 
 ### Manual Commands
 
-Open browser console (F12) for advanced operations:
+Open browser console (F12) for debugging:
 
 ```javascript
-// Check current token
-Config.getGitHubToken()
+// Check Firebase connection
+Storage.isFirebaseAvailable()
 
-// Set new token
-Config.setGitHubToken('your_new_token')
+// View local storage data
+Storage.getFromLocalStorage('finances')
+Storage.getFromLocalStorage('media')
 
-// Force sync local data to GitHub
-Storage.syncLocalToGitHub()
+// Sync local data to Firestore (migration)
+Storage.syncLocalToFirestore()
 
 // Clear all local data
 localStorage.clear()
 ```
+
+### Firebase Console
+
+Monitor your data in real-time:
+1. Go to [Firebase Console](https://console.firebase.google.com/)
+2. Select your project
+3. Click **"Firestore Database"**
+4. View `finances` and `media` collections
+5. See real-time updates as you use the app
 
 ## Future Enhancements
 
