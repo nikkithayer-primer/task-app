@@ -26,6 +26,7 @@
     --color-accent-light: rgba(109, 219, 212, 0.2);
     --color-accent-shadow: rgba(109, 219, 212, 0.4);
     --color-primary-shadow: rgba(12, 33, 85, 0.2);
+    --color-primary-accent: #89DFD9;
 }
 
 body {
@@ -34,6 +35,14 @@ body {
     color: var(--color-primary-text);
     background: var(--color-hover-bg);
     min-height: 100vh;
+    min-height: 100dvh; /* Dynamic viewport height for mobile */
+    
+    /* Prevent horizontal scrolling on mobile */
+    overflow-x: hidden;
+    
+    /* Support for devices with notches/safe areas */
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
 }
 
 .container {
@@ -124,13 +133,25 @@ header p {
 .form-section {
     position: fixed;
     bottom: 0;
-    left: 0;
-    right: 0;
+    bottom: env(safe-area-inset-bottom);
+    left: env(safe-area-inset-left);
+    right: env(safe-area-inset-right);
     background: var(--color-primary-bg);
     padding: 12px;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+    padding-left: calc(12px + env(safe-area-inset-left));
+    padding-right: calc(12px + env(safe-area-inset-right));
     box-shadow: 0 -4px 20px rgba(12, 33, 85, 0.1);
     z-index: 1000;
     border-top: 1px solid var(--color-border-light);
+    box-sizing: border-box;
+    
+    /* Fallback for browsers that don't support env() */
+    min-height: 60px;
+    
+    /* Ensure it stays visible on mobile */
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
 }
 
 .form-row {
@@ -146,8 +167,8 @@ header p {
 }
 
 .form-row:focus-within {
-    border-color: var(--color-primary-text);
-    box-shadow: 0 0 0 2px rgba(12, 33, 85, 0.1);
+    border-color: var(--color-primary-accent);
+    box-shadow: 0 0 0 2px var(--color-accent-light);
 }
 
 .form-group {
