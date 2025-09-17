@@ -62,40 +62,11 @@ const UI = {
      */
     formatDate(isoString) {
         const date = new Date(isoString);
-        const now = new Date();
-        const diffMs = now - date;
-        const diffMins = Math.floor(diffMs / 60000);
-        const diffHours = Math.floor(diffMs / 3600000);
-        const diffDays = Math.floor(diffMs / 86400000);
-
-        // For very recent entries, show relative time
-        if (diffMins < 1) return 'Now';
-        if (diffMins < 60) return `${diffMins}m`;
-        if (diffHours < 24) return `${diffHours}h`;
-
-        // For entries from today, show time
-        const today = new Date();
-        if (date.toDateString() === today.toDateString()) {
-            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-        }
-
-        // For entries from yesterday
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-        if (date.toDateString() === yesterday.toDateString()) {
-            const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-            return `Yest ${time}`;
-        }
-
-        // For this week, show day abbreviation and time
-        if (diffDays < 7) {
-            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-            const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-            return `${dayNames[date.getDay()]} ${time}`;
-        }
-
-        // For older entries, show compact date
-        return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+        const month = date.getMonth() + 1; // getMonth() returns 0-11
+        const day = date.getDate();
+        const year = date.getFullYear().toString().slice(-2); // Get last 2 digits of year
+        
+        return `${month}/${day}/${year}`;
     },
 
     /**
@@ -233,7 +204,7 @@ const UI = {
             tableBody.appendChild(row);
         });
 
-        // Reinitialize swipe events for mobile
+        // Reinitialize swipe events
         if (typeof Swipe !== 'undefined') {
             Swipe.addSwipeToTable(tableBody, 'finance');
         }
@@ -296,23 +267,11 @@ const UI = {
         worthCell.className = `table-worth ${entry.worthIt ? 'worth-yes' : 'worth-no'}`;
         worthCell.textContent = entry.worthIt ? '✓ Yes' : '✗ No';
 
-        // Actions column
-        const actionsCell = document.createElement('td');
-        actionsCell.className = 'table-actions';
-        
-        const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'delete-btn';
-        deleteBtn.innerHTML = '🗑️';
-        deleteBtn.title = 'Delete transaction';
-        
-        actionsCell.appendChild(deleteBtn);
-
         // Append all cells to row
         row.appendChild(dateCell);
         row.appendChild(descCell);
         row.appendChild(amountCell);
         row.appendChild(worthCell);
-        row.appendChild(actionsCell);
 
         return row;
     },
@@ -352,7 +311,7 @@ const UI = {
             tableBody.appendChild(row);
         });
 
-        // Reinitialize swipe events for mobile
+        // Reinitialize swipe events
         if (typeof Swipe !== 'undefined') {
             Swipe.addSwipeToTable(tableBody, 'media');
         }
@@ -383,22 +342,10 @@ const UI = {
         worthCell.className = `table-worth ${entry.worthIt ? 'worth-yes' : 'worth-no'}`;
         worthCell.textContent = entry.worthIt ? '✓ Yes' : '✗ No';
 
-        // Actions column
-        const actionsCell = document.createElement('td');
-        actionsCell.className = 'table-actions';
-        
-        const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'delete-btn';
-        deleteBtn.innerHTML = '🗑️';
-        deleteBtn.title = 'Delete media log';
-        
-        actionsCell.appendChild(deleteBtn);
-
         // Append all cells to row
         row.appendChild(dateCell);
         row.appendChild(descCell);
         row.appendChild(worthCell);
-        row.appendChild(actionsCell);
 
         return row;
     },
@@ -411,6 +358,13 @@ const UI = {
         const form = document.getElementById(formId);
         if (form) {
             form.reset();
+            
+            // Reset worth-it buttons to default state
+            const worthItBtns = form.querySelectorAll('.worth-it-btn');
+            worthItBtns.forEach(btn => {
+                btn.setAttribute('data-worth', 'true');
+                btn.textContent = 'Worth it';
+            });
         }
     },
 

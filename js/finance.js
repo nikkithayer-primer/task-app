@@ -21,6 +21,12 @@ const Finance = {
             form.addEventListener('submit', (e) => this.handleSubmit(e));
         }
 
+        // Bind worth-it button event
+        const worthItBtn = document.getElementById('finance-worth-it');
+        if (worthItBtn) {
+            worthItBtn.addEventListener('click', (e) => this.handleWorthItToggle(e));
+        }
+
         // Bind delete button events (delegated event handling)
         const logContainer = document.getElementById('finance-log');
         if (logContainer) {
@@ -64,6 +70,23 @@ const Finance = {
     },
 
     /**
+     * Handle worth-it button toggle
+     * @param {Event} e - Click event
+     */
+    handleWorthItToggle(e) {
+        const button = e.target;
+        const isWorthIt = button.getAttribute('data-worth') === 'true';
+        
+        if (isWorthIt) {
+            button.setAttribute('data-worth', 'false');
+            button.textContent = 'Not worth it';
+        } else {
+            button.setAttribute('data-worth', 'true');
+            button.textContent = 'Worth it';
+        }
+    },
+
+    /**
      * Get form data
      * @returns {Object} - Form data object
      */
@@ -71,7 +94,7 @@ const Finance = {
         return {
             description: document.getElementById('finance-description').value.trim(),
             amount: document.getElementById('finance-amount').value,
-            worthIt: document.getElementById('finance-worth-it').checked
+            worthIt: document.getElementById('finance-worth-it').getAttribute('data-worth') === 'true'
         };
     },
 

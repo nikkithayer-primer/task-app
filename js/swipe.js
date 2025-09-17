@@ -1,6 +1,6 @@
 /**
- * Swipe module for handling touch gestures on mobile devices
- * Provides swipe-to-delete functionality for table rows
+ * Swipe module for handling touch and mouse gestures
+ * Provides swipe-to-delete functionality for table rows on all devices
  */
 
 const Swipe = {
@@ -33,25 +33,36 @@ const Swipe = {
      * @param {string} type - Type of table ('finance' or 'media')
      */
     addSwipeToTable(tableBody, type) {
-        tableBody.addEventListener('touchstart', (e) => this.handleTouchStart(e), { passive: true });
-        tableBody.addEventListener('touchmove', (e) => this.handleTouchMove(e), { passive: false });
-        tableBody.addEventListener('touchend', (e) => this.handleTouchEnd(e, type), { passive: true });
+        // Touch events for mobile
+        tableBody.addEventListener('touchstart', (e) => this.handleStart(e), { passive: true });
+        tableBody.addEventListener('touchmove', (e) => this.handleMove(e), { passive: false });
+        tableBody.addEventListener('touchend', (e) => this.handleEnd(e, type), { passive: true });
+        
+        // Mouse events for desktop
+        tableBody.addEventListener('mousedown', (e) => this.handleStart(e), { passive: true });
+        tableBody.addEventListener('mousemove', (e) => this.handleMove(e), { passive: false });
+        tableBody.addEventListener('mouseup', (e) => this.handleEnd(e, type), { passive: true });
+        tableBody.addEventListener('mouseleave', (e) => this.handleEnd(e, type), { passive: true });
     },
 
     /**
-     * Handle touch start event
-     * @param {TouchEvent} e - Touch event
+     * Handle start event (touch or mouse)
+     * @param {TouchEvent|MouseEvent} e - Touch or mouse event
      */
-    handleTouchStart(e) {
+    handleStart(e) {
         const row = e.target.closest('tr');
         if (!row || !row.hasAttribute('data-id')) return;
 
-        const touch = e.touches[0];
+        // Get coordinates from touch or mouse event
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        
         row._swipeData = {
-            startX: touch.clientX,
-            startY: touch.clientY,
-            currentX: touch.clientX,
-            startTime: Date.now()
+            startX: clientX,
+            startY: clientY,
+            currentX: clientX,
+            startTime: Date.now(),
+            isMouseDown: !e.touches // Track if this is a mouse drag
         };
 
         row.classList.add('table-row-swipeable');
@@ -59,16 +70,22 @@ const Swipe = {
     },
 
     /**
-     * Handle touch move event
-     * @param {TouchEvent} e - Touch event
+     * Handle move event (touch or mouse)
+     * @param {TouchEvent|MouseEvent} e - Touch or mouse event
      */
-    handleTouchMove(e) {
+    handleMove(e) {
         const row = e.target.closest('tr');
         if (!row || !row._swipeData) return;
 
-        const touch = e.touches[0];
-        const deltaX = touch.clientX - row._swipeData.startX;
-        const deltaY = touch.clientY - row._swipeData.startY;
+        // For mouse events, only proceed if mouse is down
+        if (row._swipeData.isMouseDown && e.type === 'mousemove' && e.buttons !== 1) return;
+
+        // Get coordinates from touch or mouse event
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        
+        const deltaX = clientX - row._swipeData.startX;
+        const deltaY = clientY - row._swipeData.startY;
 
         // Only handle horizontal swipes
         if (Math.abs(deltaY) > Math.abs(deltaX)) return;
@@ -76,7 +93,7 @@ const Swipe = {
         // Prevent scrolling when swiping horizontally
         e.preventDefault();
 
-        row._swipeData.currentX = touch.clientX;
+        row._swipeData.currentX = clientX;
         row.classList.add('swiping');
 
         // Only allow left swipes (negative deltaX)
@@ -94,11 +111,11 @@ const Swipe = {
     },
 
     /**
-     * Handle touch end event
-     * @param {TouchEvent} e - Touch event
+     * Handle end event (touch or mouse)
+     * @param {TouchEvent|MouseEvent} e - Touch or mouse event
      * @param {string} type - Type of table ('finance' or 'media')
      */
-    handleTouchEnd(e, type) {
+    handleEnd(e, type) {
         const row = e.target.closest('tr');
         if (!row || !row._swipeData) return;
 
@@ -134,7 +151,7 @@ const Swipe = {
 
         const indicator = document.createElement('div');
         indicator.className = 'swipe-delete-indicator';
-        indicator.innerHTML = '🗑️ Delete';
+        indicator.innerHTML = 'Delete';
         row.style.position = 'relative';
         row.appendChild(indicator);
     },

@@ -21,6 +21,12 @@ const Media = {
             form.addEventListener('submit', (e) => this.handleSubmit(e));
         }
 
+        // Bind worth-it button event
+        const worthItBtn = document.getElementById('media-worth-it');
+        if (worthItBtn) {
+            worthItBtn.addEventListener('click', (e) => this.handleWorthItToggle(e));
+        }
+
         // Bind delete button events (delegated event handling)
         const logContainer = document.getElementById('media-log');
         if (logContainer) {
@@ -63,13 +69,30 @@ const Media = {
     },
 
     /**
+     * Handle worth-it button toggle
+     * @param {Event} e - Click event
+     */
+    handleWorthItToggle(e) {
+        const button = e.target;
+        const isWorthIt = button.getAttribute('data-worth') === 'true';
+        
+        if (isWorthIt) {
+            button.setAttribute('data-worth', 'false');
+            button.textContent = 'Not worth it';
+        } else {
+            button.setAttribute('data-worth', 'true');
+            button.textContent = 'Worth it';
+        }
+    },
+
+    /**
      * Get form data
      * @returns {Object} - Form data object
      */
     getFormData() {
         return {
             description: document.getElementById('media-description').value.trim(),
-            worthIt: document.getElementById('media-worth-it').checked
+            worthIt: document.getElementById('media-worth-it').getAttribute('data-worth') === 'true'
         };
     },
 
