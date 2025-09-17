@@ -39,7 +39,7 @@ body {
 .container {
     max-width: 800px;
     margin: 0 auto;
-    padding: 0 10px;
+    padding: 60px 10px 0;
 }
 
 /* Header */
@@ -60,13 +60,18 @@ header p {
     opacity: 0.8;
 }
 
-/* Tab container - Mobile First (Full Width) */
+/* Tab container - Mobile First (Fixed at top) */
 .tab-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
     background: var(--color-primary-bg);
     border-radius: 0;
-    box-shadow: none;
+    box-shadow: 0 2px 8px rgba(12, 33, 85, 0.1);
     overflow: hidden;
-    margin: 0 -10px;
+    z-index: 1001;
+    border-bottom: 1px solid var(--color-border-light);
 }
 
 /* Tab buttons */
@@ -201,7 +206,7 @@ header p {
 
 /* Worth it button styles */
 .worth-it-btn {
-    background: var(--color-accent);
+    background: var(--color-success);
     color: var(--color-primary-bg);
     border: none;
     padding: 8px 16px;
@@ -270,8 +275,8 @@ header p {
 }
 
 .log-entry {
-    background: #f8f9fa;
-    border: 1px solid #e9ecef;
+    background: var(--color-hover-bg);
+    border: 1px solid var(--color-border-light);
     border-radius: 8px;
     padding: 15px;
     margin-bottom: 10px;
@@ -292,7 +297,7 @@ header p {
 
 .log-entry-date {
     font-size: 0.85rem;
-    color: #6c757d;
+    color: var(--color-muted-text);
 }
 
 .log-entry-worth {
@@ -303,23 +308,23 @@ header p {
 }
 
 .worth-yes {
-    color: #28a745;
+    color: var(--color-success);
 }
 
 .worth-no {
-    color: #dc3545;
+    color: var(--color-error);
 }
 
 .log-entry-description {
     font-size: 1rem;
-    color: #495057;
+    color: var(--color-primary-text);
     margin-bottom: 5px;
 }
 
 .log-entry-amount {
     font-size: 1.1rem;
     font-weight: 600;
-    color: #667eea;
+    color: var(--color-accent);
 }
 
 .empty-state {
@@ -469,13 +474,16 @@ header p {
 /* Desktop Enhancement - Mobile First Design */
 @media (min-width: 769px) {
     .container {
-        padding: 0 20px;
+        padding: 20px;
     }
     
     .tab-container {
+        position: static;
         border-radius: 4px;
         box-shadow: 0 10px 30px var(--color-primary-shadow);
         margin: 0;
+        z-index: auto;
+        border-bottom: none;
     }
     
     header h1 {
