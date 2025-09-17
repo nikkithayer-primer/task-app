@@ -1,118 +1,157 @@
 # Task Tracker
 
-A simple, elegant task tracker for logging finances and media consumption. Built with vanilla HTML, CSS, and JavaScript for easy hosting on GitHub Pages.
+A mobile-optimized task tracker for logging finances and media consumption. Built for couples to share and track their spending and entertainment choices.
 
 ## Features
 
+### 📱 Mobile-First Design
+- Fixed tabs at top for easy navigation
+- Credit card-style single-line input form at bottom
+- Swipe-to-delete functionality
+- Responsive design that works on all devices
+
 ### 💰 Finance Tracking
-- Log spending with description and amount
-- Mark whether purchases were "worth it"
-- View recent transactions with timestamps
-- Delete entries with confirmation
+- Log purchases with description and cost
+- Thumbs up/down for "worth it" rating
+- View spending in clean table format
+- Track spending patterns over time
 
 ### 🎬 Media Tracking
-- Log what you've watched (movies, shows, videos, etc.)
-- Mark whether content was "worth it"
-- View recent media consumption with timestamps
-- Delete entries with confirmation
+- Log movies, shows, books, etc.
+- Thumbs up/down for "worth it" rating
+- Keep track of what you've watched
+- Share recommendations with your partner
 
-## Key Benefits
+### 🎨 Design
+- Midcentury modern color palette
+- Minimal, clean interface
+- CSS variables for easy customization
+- Accessibility-friendly
 
-- **No Backend Required**: Uses localStorage for data persistence
-- **GitHub Pages Ready**: Pure client-side application
-- **Responsive Design**: Works on desktop and mobile devices
-- **Modular Architecture**: Easy to extend and customize
-- **Modern UI**: Clean, intuitive interface with smooth animations
+## Technical Stack
 
-## Getting Started
-
-### For GitHub Pages Deployment
-
-1. Fork or clone this repository
-2. Enable GitHub Pages in your repository settings
-3. Select "Deploy from a branch" and choose `main` branch
-4. Your site will be available at `https://yourusername.github.io/task-app`
-
-### For Local Development
-
-1. Clone the repository
-2. Open `index.html` in your browser
-3. Start tracking your finances and media consumption!
+- **Frontend**: HTML5, CSS3, JavaScript (ES6+)
+- **Storage**: Server-side API with local storage fallback
+- **Architecture**: Modular JavaScript with separation of concerns
 
 ## File Structure
 
 ```
 task-app/
-├── index.html          # Main HTML file
-├── styles.css          # All CSS styles
+├── index.html              # Main HTML file
+├── styles.css              # All styles with CSS variables
 ├── js/
-│   ├── app.js          # Main application initialization
-│   ├── storage.js      # localStorage management
-│   ├── ui.js           # UI utilities and interactions
-│   ├── finance.js      # Finance tracking functionality
-│   └── media.js        # Media tracking functionality
-└── README.md           # This file
+│   ├── config.js           # Configuration and settings
+│   ├── storage.js          # Data persistence layer
+│   ├── ui.js               # User interface management
+│   ├── swipe.js            # Touch/swipe gesture handling
+│   ├── finance.js          # Finance-specific functionality
+│   ├── media.js            # Media-specific functionality
+│   └── app.js              # Main application coordinator
+└── README.md               # This file
 ```
 
-## Architecture
+## Setup Instructions
 
-The application is built with a modular architecture for easy maintenance and extension:
+### For GitHub Pages Deployment
 
-- **Storage Module**: Handles all localStorage operations with error handling
-- **UI Module**: Manages interface interactions, date formatting, and display logic
-- **Finance Module**: Handles finance form validation, submission, and display
-- **Media Module**: Manages media logging functionality
-- **App Module**: Coordinates all modules and handles global functionality
+1. **Clone or download this repository**
+2. **Update API configuration** in `js/config.js`:
+   ```javascript
+   const Config = {
+       API_BASE_URL: 'https://your-api-server.com',
+       // ... other settings
+   };
+   ```
+3. **Push to GitHub repository**
+4. **Enable GitHub Pages** in repository settings
+5. **Access your site** at `https://yourusername.github.io/task-app`
 
-## Extending the Application
+### For Server-Side Storage
 
-The modular structure makes it easy to add new features:
+To enable shared storage between you and your husband, you'll need to:
 
-### Adding New Fields
+1. **Set up a backend API** that supports:
+   - `GET /finances` - Get all finance entries
+   - `POST /finances` - Add new finance entry
+   - `DELETE /finances/:id` - Delete finance entry
+   - `GET /media` - Get all media entries
+   - `POST /media` - Add new media entry
+   - `DELETE /media/:id` - Delete media entry
 
-1. Update the HTML form in `index.html`
-2. Modify the corresponding module (`finance.js` or `media.js`)
-3. Update the `getFormData()` and `validateFormData()` functions
-4. Adjust the display logic in the UI module if needed
+2. **Update the API_BASE_URL** in `js/config.js`
 
-### Adding New Tabs
+3. **Optional**: Add authentication to prevent unauthorized access
 
-1. Add new tab button and content section in `index.html`
-2. Create a new JavaScript module following the existing pattern
-3. Initialize the new module in `app.js`
-4. Update the storage module with new data keys
+### Fallback Mode
 
-### Adding Analytics
+If no server is available, the app automatically falls back to local storage. Each person's data will be stored locally on their device.
 
-The modules already include helper functions for statistics:
-- `Finance.getStatistics()` - spending analysis
-- `Media.getStatistics()` - consumption patterns
-- `App.getAppStatistics()` - combined data
+## Usage
 
-## Data Storage
+### Adding Entries
+1. **Select tab** (Finances or Media) at the top
+2. **Fill in the form** at the bottom of the screen
+3. **Toggle thumbs up/down** for "worth it" rating
+4. **Tap send button** to save
 
-Data is stored in the browser's localStorage:
-- Finance entries: `taskTracker_finances`
-- Media entries: `taskTracker_media`
+### Managing Entries
+- **View entries** in the table format
+- **Swipe left** on any entry to delete it
+- **Entries are sorted** by date (newest first)
 
-Each entry includes:
-- Unique ID
-- Timestamp
-- Description
-- Worth it flag
-- Amount (finance only)
+### Mobile Tips
+- Form stays at bottom near keyboard for easy typing
+- Tabs stay at top for quick switching
+- Swipe gestures work with both touch and mouse
 
-## Browser Compatibility
+## Customization
 
-Works in all modern browsers that support:
-- localStorage
-- ES6 features (const, let, arrow functions)
-- CSS Grid and Flexbox
+### Colors
+All colors are defined as CSS variables in `styles.css`:
+
+```css
+:root {
+    --color-warm-white: #faf9f7;
+    --color-sage: #9caf88;
+    --color-terracotta: #d2691e;
+    /* ... and more */
+}
+```
+
+### Configuration
+App settings can be modified in `js/config.js`:
+
+```javascript
+const Config = {
+    SWIPE_THRESHOLD: 100,        // pixels to swipe for delete
+    SWIPE_TIME_LIMIT: 1000,      // max swipe time (ms)
+    DATE_FORMAT: 'DD/MM/YY',     // date display format
+};
+```
+
+## Browser Support
+
+- **Modern browsers**: Full functionality
+- **Safari iOS**: Optimized for iPhone/iPad
+- **Chrome Android**: Optimized for Android devices
+- **Desktop browsers**: Enhanced experience with mouse support
+
+## Future Enhancements
+
+- [ ] Push notifications for spending alerts
+- [ ] Data visualization and charts
+- [ ] Export data to CSV/JSON
+- [ ] Categories and tags
+- [ ] Search and filtering
+- [ ] Dark mode support
+- [ ] Offline mode with sync
 
 ## Contributing
 
-This is a personal project, but feel free to fork and customize for your own needs!
+This is a personal project, but suggestions and improvements are welcome!
 
 ## License
 
-MIT License - feel free to use and modify as needed.
+MIT License - feel free to use and modify for your own needs.
+

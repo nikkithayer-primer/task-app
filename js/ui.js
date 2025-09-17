@@ -1,6 +1,6 @@
 /**
  * UI module for handling user interface interactions
- * This module manages tab switching, form interactions, and display logic
+ * Manages display updates, form interactions, and visual feedback
  */
 
 const UI = {
@@ -8,233 +8,178 @@ const UI = {
      * Initialize UI components
      */
     init() {
-        this.initTabs();
-        this.initEventListeners();
+        this.bindTabEvents();
+        this.bindWorthItEvents();
+        this.bindValidationEvents();
+        this.showLoading(false);
     },
 
     /**
-     * Initialize tab functionality
+     * Bind tab switching events
      */
-    initTabs() {
+    bindTabEvents() {
         const tabButtons = document.querySelectorAll('.tab-btn');
-        const tabContents = document.querySelectorAll('.tab-content');
-
         tabButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                const targetTab = button.getAttribute('data-tab');
-                
-                // Remove active class from all tabs and contents
-                tabButtons.forEach(btn => btn.classList.remove('active'));
-                tabContents.forEach(content => content.classList.remove('active'));
-                
-                // Add active class to clicked tab and corresponding content
-                button.classList.add('active');
-                document.getElementById(targetTab).classList.add('active');
-            });
+            button.addEventListener('click', (e) => this.switchTab(e.target.dataset.tab));
         });
     },
 
     /**
-     * Initialize global event listeners
+     * Bind worth it click events (delegated event handling)
      */
-    initEventListeners() {
-        // Handle form submissions will be handled by individual modules
-        // This is for any global UI interactions
-        
-        // Add smooth scrolling for better UX
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
+    bindWorthItEvents() {
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('clickable-worth')) {
+                this.toggleWorthItInTable(e.target);
+            }
+        });
+    },
+
+    /**
+     * Bind custom validation events
+     */
+    bindValidationEvents() {
+        // Prevent default browser validation tooltips
+        const forms = document.querySelectorAll('form');
+        forms.forEach(form => {
+            form.addEventListener('invalid', (e) => {
                 e.preventDefault();
-                const target = document.querySelector(this.getAttribute('href'));
-                if (target) {
-                    target.scrollIntoView({
-                        behavior: 'smooth'
-                    });
+                this.showCustomValidation(e.target);
+            }, true);
+
+            form.addEventListener('submit', (e) => {
+                const invalidInputs = form.querySelectorAll(':invalid');
+                if (invalidInputs.length > 0) {
+                    e.preventDefault();
+                    this.showCustomValidation(invalidInputs[0]);
+                    invalidInputs[0].focus();
+                }
+            });
+        });
+
+        // Hide validation tooltips when user starts typing
+        const inputs = document.querySelectorAll('input[required]');
+        inputs.forEach(input => {
+            input.addEventListener('input', () => {
+                this.hideCustomValidation(input);
+            });
+
+            input.addEventListener('blur', () => {
+                if (!input.validity.valid) {
+                    this.showCustomValidation(input);
                 }
             });
         });
     },
 
     /**
-     * Format date for display
-     * @param {string} isoString - ISO date string
-     * @returns {string} - Formatted date string
+     * Show custom validation tooltip
+     * @param {HTMLElement} input - Input element that failed validation
      */
-    formatDate(isoString) {
-        const date = new Date(isoString);
-        const month = date.getMonth() + 1; // getMonth() returns 0-11
-        const day = date.getDate();
-        const year = date.getFullYear().toString().slice(-2); // Get last 2 digits of year
-        
-        return `${month}/${day}/${year}`;
-    },
-
-    /**
-     * Format currency for display
-     * @param {number} amount - Amount to format
-     * @returns {string} - Formatted currency string
-     */
-    formatCurrency(amount) {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD'
-        }).format(amount);
-    },
-
-    /**
-     * Create a log entry element
-     * @param {Object} entry - Entry data
-     * @param {string} type - Type of entry ('finance' or 'media')
-     * @returns {HTMLElement} - Log entry element
-     */
-    createLogEntry(entry, type) {
-        const entryDiv = document.createElement('div');
-        entryDiv.className = 'log-entry';
-        entryDiv.setAttribute('data-id', entry.id);
-
-        const headerDiv = document.createElement('div');
-        headerDiv.className = 'log-entry-header';
-
-        const dateSpan = document.createElement('span');
-        dateSpan.className = 'log-entry-date';
-        dateSpan.textContent = this.formatDate(entry.timestamp);
-
-        const worthSpan = document.createElement('span');
-        worthSpan.className = `log-entry-worth ${entry.worthIt ? 'worth-yes' : 'worth-no'}`;
-        worthSpan.textContent = entry.worthIt ? '✓ Worth it' : '✗ Not worth it';
-
-        headerDiv.appendChild(dateSpan);
-        headerDiv.appendChild(worthSpan);
-
-        const descriptionDiv = document.createElement('div');
-        descriptionDiv.className = 'log-entry-description';
-        descriptionDiv.textContent = entry.description;
-
-        entryDiv.appendChild(headerDiv);
-        entryDiv.appendChild(descriptionDiv);
-
-        // Add amount for finance entries
-        if (type === 'finance' && entry.amount !== undefined) {
-            const amountDiv = document.createElement('div');
-            amountDiv.className = 'log-entry-amount';
-            amountDiv.textContent = this.formatCurrency(entry.amount);
-            entryDiv.appendChild(amountDiv);
-        }
-
-        // Add delete button (optional for future enhancement)
-        const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'delete-btn';
-        deleteBtn.innerHTML = '🗑️';
-        deleteBtn.style.cssText = `
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: none;
-            border: none;
-            cursor: pointer;
-            opacity: 0;
-            transition: opacity 0.2s;
-            font-size: 14px;
-        `;
-        
-        entryDiv.style.position = 'relative';
-        entryDiv.addEventListener('mouseenter', () => deleteBtn.style.opacity = '1');
-        entryDiv.addEventListener('mouseleave', () => deleteBtn.style.opacity = '0');
-        
-        entryDiv.appendChild(deleteBtn);
-
-        return entryDiv;
-    },
-
-    /**
-     * Display entries in a log container
-     * @param {Array} entries - Array of entries to display
-     * @param {string} containerId - ID of the container element
-     * @param {string} type - Type of entries ('finance' or 'media')
-     */
-    displayEntries(entries, containerId, type) {
-        const container = document.getElementById(containerId);
-        
-        if (!container) {
-            console.error(`Container with ID ${containerId} not found`);
-            return;
-        }
-
-        if (type === 'finance') {
-            this.displayFinanceTable(entries, containerId);
-        } else if (type === 'media') {
-            this.displayMediaTable(entries, containerId);
-        } else {
-            this.displayMediaCards(entries, containerId, type);
+    showCustomValidation(input) {
+        const formGroup = input.closest('.form-group');
+        if (formGroup) {
+            formGroup.classList.add('show-validation');
+            
+            // Hide after 3 seconds
+            setTimeout(() => {
+                this.hideCustomValidation(input);
+            }, 3000);
         }
     },
 
     /**
-     * Display finance entries as a table
+     * Hide custom validation tooltip
+     * @param {HTMLElement} input - Input element
+     */
+    hideCustomValidation(input) {
+        const formGroup = input.closest('.form-group');
+        if (formGroup) {
+            formGroup.classList.remove('show-validation');
+        }
+    },
+
+    /**
+     * Switch between tabs
+     * @param {string} tabName - Name of tab to switch to
+     */
+    switchTab(tabName) {
+        // Update tab buttons
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.tab === tabName);
+        });
+
+        // Update tab content
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.toggle('active', content.id === tabName);
+        });
+
+        // Update forms
+        document.querySelectorAll('.entry-form').forEach(form => {
+            form.classList.toggle('active', form.id === `${tabName}-form`);
+        });
+    },
+
+    /**
+     * Display finance entries in table
      * @param {Array} entries - Array of finance entries
-     * @param {string} containerId - ID of the container element
      */
-    displayFinanceTable(entries, containerId) {
+    displayFinances(entries) {
         const table = document.getElementById('finance-table');
         const tableBody = document.getElementById('finance-table-body');
         const emptyState = document.getElementById('finance-empty-state');
 
-        if (!table || !tableBody || !emptyState) {
-            console.error('Finance table elements not found');
-            return;
-        }
-
-        // Clear existing entries
-        tableBody.innerHTML = '';
-
         if (entries.length === 0) {
             table.style.display = 'none';
             emptyState.style.display = 'block';
-            emptyState.textContent = 'No finance entries yet. Add your first transaction above!';
             return;
         }
 
-        // Show table and hide empty state
         table.style.display = 'table';
         emptyState.style.display = 'none';
-
-        // Create table rows
+        
+        tableBody.innerHTML = '';
+        
         entries.forEach(entry => {
-            const row = this.createFinanceTableRow(entry);
+            const row = this.createFinanceRow(entry);
             tableBody.appendChild(row);
         });
 
         // Reinitialize swipe events
-        if (typeof Swipe !== 'undefined') {
+        if (window.Swipe) {
             Swipe.addSwipeToTable(tableBody, 'finance');
         }
     },
 
     /**
-     * Display media entries as cards (keep existing card layout)
+     * Display media entries in table
      * @param {Array} entries - Array of media entries
-     * @param {string} containerId - ID of the container element
-     * @param {string} type - Type of entries
      */
-    displayMediaCards(entries, containerId, type) {
-        const container = document.getElementById(containerId);
-        
-        // Clear existing entries
-        container.innerHTML = '';
+    displayMedia(entries) {
+        const table = document.getElementById('media-table');
+        const tableBody = document.getElementById('media-table-body');
+        const emptyState = document.getElementById('media-empty-state');
 
         if (entries.length === 0) {
-            const emptyState = document.createElement('div');
-            emptyState.className = 'empty-state';
-            emptyState.textContent = `No ${type} entries yet. Add your first entry above!`;
-            container.appendChild(emptyState);
+            table.style.display = 'none';
+            emptyState.style.display = 'block';
             return;
         }
 
-        // Create and append entry elements
+        table.style.display = 'table';
+        emptyState.style.display = 'none';
+        
+        tableBody.innerHTML = '';
+        
         entries.forEach(entry => {
-            const entryElement = this.createLogEntry(entry, type);
-            container.appendChild(entryElement);
+            const row = this.createMediaRow(entry);
+            tableBody.appendChild(row);
         });
+
+        // Reinitialize swipe events
+        if (window.Swipe) {
+            Swipe.addSwipeToTable(tableBody, 'media');
+        }
     },
 
     /**
@@ -242,79 +187,41 @@ const UI = {
      * @param {Object} entry - Finance entry data
      * @returns {HTMLElement} - Table row element
      */
-    createFinanceTableRow(entry) {
+    createFinanceRow(entry) {
         const row = document.createElement('tr');
-        row.setAttribute('data-id', entry.id);
+        row.className = 'swipe-row';
+        row.dataset.id = entry.id;
 
-        // Date column
         const dateCell = document.createElement('td');
-        dateCell.className = 'table-date';
+        dateCell.className = 'date-cell';
         dateCell.textContent = this.formatDate(entry.timestamp);
 
-        // Description column
         const descCell = document.createElement('td');
-        descCell.className = 'table-description';
+        descCell.className = 'desc-cell';
         descCell.textContent = entry.description;
-        descCell.title = entry.description; // Show full text on hover
 
-        // Amount column
-        const amountCell = document.createElement('td');
-        amountCell.className = 'table-amount';
-        amountCell.textContent = this.formatCurrency(entry.amount);
+        const costCell = document.createElement('td');
+        costCell.className = 'cost-cell';
+        costCell.textContent = this.formatCurrency(entry.cost);
 
-        // Worth it column
         const worthCell = document.createElement('td');
-        worthCell.className = `table-worth ${entry.worthIt ? 'worth-yes' : 'worth-no'}`;
-        worthCell.textContent = entry.worthIt ? '✓ Yes' : '✗ No';
+        worthCell.className = `worth-cell clickable-worth ${entry.worthIt ? 'worth-yes' : 'worth-no'}`;
+        worthCell.textContent = entry.worthIt ? '👍' : '👎';
+        worthCell.dataset.worth = entry.worthIt;
+        worthCell.dataset.entryId = entry.id;
+        worthCell.dataset.type = 'finance';
 
-        // Append all cells to row
+        const deleteIndicator = document.createElement('div');
+        deleteIndicator.className = 'swipe-delete-indicator';
+        deleteIndicator.textContent = 'Delete';
+
         row.appendChild(dateCell);
         row.appendChild(descCell);
-        row.appendChild(amountCell);
+        row.appendChild(costCell);
         row.appendChild(worthCell);
+        row.appendChild(deleteIndicator);
 
         return row;
-    },
-
-    /**
-     * Display media entries as a table
-     * @param {Array} entries - Array of media entries
-     * @param {string} containerId - ID of the container element
-     */
-    displayMediaTable(entries, containerId) {
-        const table = document.getElementById('media-table');
-        const tableBody = document.getElementById('media-table-body');
-        const emptyState = document.getElementById('media-empty-state');
-
-        if (!table || !tableBody || !emptyState) {
-            console.error('Media table elements not found');
-            return;
-        }
-
-        // Clear existing entries
-        tableBody.innerHTML = '';
-
-        if (entries.length === 0) {
-            table.style.display = 'none';
-            emptyState.style.display = 'block';
-            emptyState.textContent = 'No media entries yet. Add your first entry above!';
-            return;
-        }
-
-        // Show table and hide empty state
-        table.style.display = 'table';
-        emptyState.style.display = 'none';
-
-        // Create table rows
-        entries.forEach(entry => {
-            const row = this.createMediaTableRow(entry);
-            tableBody.appendChild(row);
-        });
-
-        // Reinitialize swipe events
-        if (typeof Swipe !== 'undefined') {
-            Swipe.addSwipeToTable(tableBody, 'media');
-        }
     },
 
     /**
@@ -322,83 +229,184 @@ const UI = {
      * @param {Object} entry - Media entry data
      * @returns {HTMLElement} - Table row element
      */
-    createMediaTableRow(entry) {
+    createMediaRow(entry) {
         const row = document.createElement('tr');
-        row.setAttribute('data-id', entry.id);
+        row.className = 'swipe-row';
+        row.dataset.id = entry.id;
 
-        // Date column
         const dateCell = document.createElement('td');
-        dateCell.className = 'table-date';
+        dateCell.className = 'date-cell';
         dateCell.textContent = this.formatDate(entry.timestamp);
 
-        // Description column
         const descCell = document.createElement('td');
-        descCell.className = 'table-description';
+        descCell.className = 'desc-cell';
         descCell.textContent = entry.description;
-        descCell.title = entry.description; // Show full text on hover
 
-        // Worth it column
         const worthCell = document.createElement('td');
-        worthCell.className = `table-worth ${entry.worthIt ? 'worth-yes' : 'worth-no'}`;
-        worthCell.textContent = entry.worthIt ? '✓ Yes' : '✗ No';
+        worthCell.className = `worth-cell clickable-worth ${entry.worthIt ? 'worth-yes' : 'worth-no'}`;
+        worthCell.textContent = entry.worthIt ? '👍' : '👎';
+        worthCell.dataset.worth = entry.worthIt;
+        worthCell.dataset.entryId = entry.id;
+        worthCell.dataset.type = 'media';
 
-        // Append all cells to row
+        const deleteIndicator = document.createElement('div');
+        deleteIndicator.className = 'swipe-delete-indicator';
+        deleteIndicator.textContent = 'Delete';
+
         row.appendChild(dateCell);
         row.appendChild(descCell);
         row.appendChild(worthCell);
+        row.appendChild(deleteIndicator);
 
         return row;
     },
 
     /**
+     * Format date for display
+     * @param {string} timestamp - ISO timestamp
+     * @returns {string} - Formatted date (DD/MM/YY)
+     */
+    formatDate(timestamp) {
+        const date = new Date(timestamp);
+        const day = date.getDate().toString().padStart(2, '0');
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const year = date.getFullYear().toString().slice(-2);
+        return `${day}/${month}/${year}`;
+    },
+
+    /**
+     * Format currency for display
+     * @param {number} amount - Amount to format
+     * @returns {string} - Formatted currency
+     */
+    formatCurrency(amount) {
+        return `$${parseFloat(amount).toFixed(2)}`;
+    },
+
+    /**
      * Clear form inputs
-     * @param {string} formId - ID of the form to clear
+     * @param {string} formId - ID of form to clear
      */
     clearForm(formId) {
         const form = document.getElementById(formId);
-        if (form) {
-            form.reset();
-            
-            // Reset worth-it buttons to default state
-            const worthItBtns = form.querySelectorAll('.worth-it-btn');
-            worthItBtns.forEach(btn => {
-                btn.setAttribute('data-worth', 'true');
-                btn.textContent = 'Worth it';
-            });
+        if (!form) return;
+
+        // Clear text inputs
+        const inputs = form.querySelectorAll('input[type="text"], input[type="number"]');
+        inputs.forEach(input => input.value = '');
+
+        // Reset worth buttons to thumbs up
+        const worthBtns = form.querySelectorAll('.worth-btn');
+        worthBtns.forEach(btn => {
+            btn.dataset.worth = 'true';
+            btn.textContent = '👍';
+        });
+    },
+
+    /**
+     * Show/hide loading spinner
+     * @param {boolean} show - Whether to show loading
+     */
+    showLoading(show) {
+        const loading = document.getElementById('loading');
+        loading.classList.toggle('hidden', !show);
+    },
+
+    /**
+     * Show success message
+     * @param {string} message - Success message
+     */
+    showSuccess(message) {
+        // Simple success feedback - could be enhanced with toast notifications
+        console.log('Success:', message);
+    },
+
+    /**
+     * Show error message
+     * @param {string} message - Error message
+     */
+    showError(message) {
+        // Simple error feedback - could be enhanced with toast notifications
+        console.error('Error:', message);
+        alert(`Error: ${message}`);
+    },
+
+    /**
+     * Toggle worth it status in table
+     * @param {HTMLElement} cell - Worth it cell that was clicked
+     */
+    async toggleWorthItInTable(cell) {
+        const entryId = cell.dataset.entryId;
+        const type = cell.dataset.type;
+        const currentWorth = cell.dataset.worth === 'true';
+        const newWorth = !currentWorth;
+
+        try {
+            this.showLoading(true);
+
+            // Update the entry in storage
+            if (type === 'finance') {
+                await this.updateFinanceWorthIt(entryId, newWorth);
+            } else {
+                await this.updateMediaWorthIt(entryId, newWorth);
+            }
+
+            // Update the UI immediately
+            cell.dataset.worth = newWorth;
+            cell.textContent = newWorth ? '👍' : '👎';
+            cell.className = `worth-cell clickable-worth ${newWorth ? 'worth-yes' : 'worth-no'}`;
+
+            this.showSuccess('Updated successfully');
+        } catch (error) {
+            this.showError('Failed to update entry');
+        } finally {
+            this.showLoading(false);
         }
     },
 
     /**
-     * Show a temporary success message
-     * @param {string} message - Message to show
-     * @param {HTMLElement} targetElement - Element to show message near
+     * Update finance entry worth it status
+     * @param {string} id - Entry ID
+     * @param {boolean} worthIt - New worth it status
      */
-    showSuccessMessage(message, targetElement) {
-        const successDiv = document.createElement('div');
-        successDiv.textContent = message;
-        successDiv.style.cssText = `
-            position: absolute;
-            background: #28a745;
-            color: white;
-            padding: 10px 15px;
-            border-radius: 5px;
-            font-size: 14px;
-            z-index: 1000;
-            animation: fadeInOut 2s ease-in-out;
-        `;
+    async updateFinanceWorthIt(id, worthIt) {
+        await Storage.updateFinance(id, { worthIt });
+    },
 
-        // Position near target element
-        const rect = targetElement.getBoundingClientRect();
-        successDiv.style.top = (rect.bottom + window.scrollY + 10) + 'px';
-        successDiv.style.left = rect.left + 'px';
+    /**
+     * Update media entry worth it status
+     * @param {string} id - Entry ID
+     * @param {boolean} worthIt - New worth it status
+     */
+    async updateMediaWorthIt(id, worthIt) {
+        await Storage.updateMedia(id, { worthIt });
+    },
 
-        document.body.appendChild(successDiv);
-
-        // Remove after animation
-        setTimeout(() => {
-            if (successDiv.parentNode) {
-                successDiv.parentNode.removeChild(successDiv);
+    /**
+     * Delete entry from UI
+     * @param {HTMLElement} row - Table row to delete
+     * @param {string} type - Type of entry (finance/media)
+     */
+    async deleteEntry(row, type) {
+        const id = row.dataset.id;
+        
+        try {
+            this.showLoading(true);
+            
+            if (type === 'finance') {
+                await Storage.deleteFinance(id);
+                Finance.loadEntries();
+            } else {
+                await Storage.deleteMedia(id);
+                Media.loadEntries();
             }
-        }, 2000);
+            
+            this.showSuccess('Entry deleted successfully');
+        } catch (error) {
+            this.showError('Failed to delete entry');
+        } finally {
+            this.showLoading(false);
+        }
     }
 };
+

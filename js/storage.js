@@ -1,130 +1,269 @@
 /**
- * Storage module for handling localStorage operations
- * This module provides a centralized way to manage data persistence
+ * Storage module for handling data persistence
+ * Handles both server-side API calls and local storage fallback
  */
 
 const Storage = {
-    // Keys for localStorage
-    FINANCE_KEY: 'taskTracker_finances',
-    MEDIA_KEY: 'taskTracker_media',
+    /**
+     * Initialize storage system
+     */
+    init() {
+        console.log('Storage system initialized');
+    },
 
     /**
-     * Get data from localStorage
-     * @param {string} key - The storage key
-     * @returns {Array} - Array of stored items or empty array if none exist
+     * Generic API request handler
+     * @param {string} url - API endpoint
+     * @param {Object} options - Request options
+     * @returns {Promise} - Response data
      */
-    getData(key) {
+    async apiRequest(url, options = {}) {
         try {
-            const data = localStorage.getItem(key);
-            return data ? JSON.parse(data) : [];
+            const response = await fetch(url, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...options.headers
+                },
+                ...options
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            return await response.json();
         } catch (error) {
-            console.error('Error retrieving data from localStorage:', error);
-            return [];
+            console.warn('API request failed, falling back to local storage:', error);
+            throw error;
         }
     },
 
     /**
-     * Save data to localStorage
-     * @param {string} key - The storage key
-     * @param {Array} data - Array of items to store
+     * Add a finance entry
+     * @param {Object} entry - Finance entry data
+     * @returns {Promise<Object>} - Saved entry with ID
      */
-    saveData(key, data) {
-        try {
-            localStorage.setItem(key, JSON.stringify(data));
-        } catch (error) {
-            console.error('Error saving data to localStorage:', error);
-        }
-    },
-
-    /**
-     * Add a new item to storage
-     * @param {string} key - The storage key
-     * @param {Object} item - The item to add
-     */
-    addItem(key, item) {
-        const data = this.getData(key);
-        const itemWithId = {
+    async addFinance(entry) {
+        const entryWithTimestamp = {
+            ...entry,
             id: this.generateId(),
             timestamp: new Date().toISOString(),
-            ...item
+            type: 'finance'
         };
-        data.unshift(itemWithId); // Add to beginning for recent-first display
-        this.saveData(key, data);
-        return itemWithId;
+
+        try {
+            // Try API first
+            const response = await this.apiRequest(`${Config.API_BASE_URL}${Config.ENDPOINTS.FINANCES}`, {
+                method: 'POST',
+                body: JSON.stringify(entryWithTimestamp)
+            });
+            return response;
+        } catch (error) {
+            // Fallback to local storage
+            return this.saveToLocalStorage('finances', entryWithTimestamp);
+        }
     },
 
     /**
-     * Remove an item from storage
-     * @param {string} key - The storage key
-     * @param {string} id - The ID of the item to remove
+     * Add a media entry
+     * @param {Object} entry - Media entry data
+     * @returns {Promise<Object>} - Saved entry with ID
      */
-    removeItem(key, id) {
-        const data = this.getData(key);
-        const filteredData = data.filter(item => item.id !== id);
-        this.saveData(key, filteredData);
+    async addMedia(entry) {
+        const entryWithTimestamp = {
+            ...entry,
+            id: this.generateId(),
+            timestamp: new Date().toISOString(),
+            type: 'media'
+        };
+
+        try {
+            // Try API first
+            const response = await this.apiRequest(`${Config.API_BASE_URL}${Config.ENDPOINTS.MEDIA}`, {
+                method: 'POST',
+                body: JSON.stringify(entryWithTimestamp)
+            });
+            return response;
+        } catch (error) {
+            // Fallback to local storage
+            return this.saveToLocalStorage('media', entryWithTimestamp);
+        }
     },
 
     /**
-     * Generate a unique ID for items
-     * @returns {string} - Unique identifier
+     * Get all finance entries
+     * @returns {Promise<Array>} - Array of finance entries
+     */
+    async getFinances() {
+        try {
+            // Try API first
+            const response = await this.apiRequest(`${Config.API_BASE_URL}${Config.ENDPOINTS.FINANCES}`);
+            return response || [];
+        } catch (error) {
+            // Fallback to local storage
+            return this.getFromLocalStorage('finances');
+        }
+    },
+
+    /**
+     * Get all media entries
+     * @returns {Promise<Array>} - Array of media entries
+     */
+    async getMedia() {
+        try {
+            // Try API first
+            const response = await this.apiRequest(`${Config.API_BASE_URL}${Config.ENDPOINTS.MEDIA}`);
+            return response || [];
+        } catch (error) {
+            // Fallback to local storage
+            return this.getFromLocalStorage('media');
+        }
+    },
+
+    /**
+     * Delete a finance entry
+     * @param {string} id - Entry ID
+     * @returns {Promise<boolean>} - Success status
+     */
+    async deleteFinance(id) {
+        try {
+            // Try API first
+            await this.apiRequest(`${Config.API_BASE_URL}${Config.ENDPOINTS.FINANCES}/${id}`, {
+                method: 'DELETE'
+            });
+            return true;
+        } catch (error) {
+            // Fallback to local storage
+            return this.deleteFromLocalStorage('finances', id);
+        }
+    },
+
+    /**
+     * Delete a media entry
+     * @param {string} id - Entry ID
+     * @returns {Promise<boolean>} - Success status
+     */
+    async deleteMedia(id) {
+        try {
+            // Try API first
+            await this.apiRequest(`${Config.API_BASE_URL}${Config.ENDPOINTS.MEDIA}/${id}`, {
+                method: 'DELETE'
+            });
+            return true;
+        } catch (error) {
+            // Fallback to local storage
+            return this.deleteFromLocalStorage('media', id);
+        }
+    },
+
+    /**
+     * Save to local storage (fallback)
+     * @param {string} type - Data type (finances/media)
+     * @param {Object} entry - Entry to save
+     * @returns {Object} - Saved entry
+     */
+    saveToLocalStorage(type, entry) {
+        const key = Config.STORAGE_KEYS[type.toUpperCase()];
+        const existing = this.getFromLocalStorage(type);
+        existing.push(entry);
+        localStorage.setItem(key, JSON.stringify(existing));
+        return entry;
+    },
+
+    /**
+     * Get from local storage (fallback)
+     * @param {string} type - Data type (finances/media)
+     * @returns {Array} - Array of entries
+     */
+    getFromLocalStorage(type) {
+        const key = Config.STORAGE_KEYS[type.toUpperCase()];
+        const data = localStorage.getItem(key);
+        return data ? JSON.parse(data) : [];
+    },
+
+    /**
+     * Delete from local storage (fallback)
+     * @param {string} type - Data type (finances/media)
+     * @param {string} id - Entry ID to delete
+     * @returns {boolean} - Success status
+     */
+    deleteFromLocalStorage(type, id) {
+        const key = Config.STORAGE_KEYS[type.toUpperCase()];
+        const existing = this.getFromLocalStorage(type);
+        const filtered = existing.filter(entry => entry.id !== id);
+        localStorage.setItem(key, JSON.stringify(filtered));
+        return true;
+    },
+
+    /**
+     * Update a finance entry
+     * @param {string} id - Entry ID
+     * @param {Object} updates - Fields to update
+     * @returns {Promise<Object>} - Updated entry
+     */
+    async updateFinance(id, updates) {
+        try {
+            // Try API first (would be a PATCH request in real implementation)
+            const response = await this.apiRequest(`${Config.API_BASE_URL}${Config.ENDPOINTS.FINANCES}/${id}`, {
+                method: 'PATCH',
+                body: JSON.stringify(updates)
+            });
+            return response;
+        } catch (error) {
+            // Fallback to local storage
+            return this.updateInLocalStorage('finances', id, updates);
+        }
+    },
+
+    /**
+     * Update a media entry
+     * @param {string} id - Entry ID
+     * @param {Object} updates - Fields to update
+     * @returns {Promise<Object>} - Updated entry
+     */
+    async updateMedia(id, updates) {
+        try {
+            // Try API first (would be a PATCH request in real implementation)
+            const response = await this.apiRequest(`${Config.API_BASE_URL}${Config.ENDPOINTS.MEDIA}/${id}`, {
+                method: 'PATCH',
+                body: JSON.stringify(updates)
+            });
+            return response;
+        } catch (error) {
+            // Fallback to local storage
+            return this.updateInLocalStorage('media', id, updates);
+        }
+    },
+
+    /**
+     * Update entry in local storage (fallback)
+     * @param {string} type - Data type (finances/media)
+     * @param {string} id - Entry ID to update
+     * @param {Object} updates - Fields to update
+     * @returns {Object} - Updated entry
+     */
+    updateInLocalStorage(type, id, updates) {
+        const key = Config.STORAGE_KEYS[type.toUpperCase()];
+        const existing = this.getFromLocalStorage(type);
+        const entryIndex = existing.findIndex(entry => entry.id === id);
+        
+        if (entryIndex === -1) {
+            throw new Error('Entry not found');
+        }
+
+        // Update the entry
+        existing[entryIndex] = { ...existing[entryIndex], ...updates };
+        localStorage.setItem(key, JSON.stringify(existing));
+        
+        return existing[entryIndex];
+    },
+
+    /**
+     * Generate a unique ID
+     * @returns {string} - Unique ID
      */
     generateId() {
         return Date.now().toString(36) + Math.random().toString(36).substr(2);
-    },
-
-    /**
-     * Get finance data
-     * @returns {Array} - Array of finance entries
-     */
-    getFinances() {
-        return this.getData(this.FINANCE_KEY);
-    },
-
-    /**
-     * Save finance entry
-     * @param {Object} entry - Finance entry object
-     */
-    addFinance(entry) {
-        return this.addItem(this.FINANCE_KEY, entry);
-    },
-
-    /**
-     * Remove finance entry
-     * @param {string} id - ID of the entry to remove
-     */
-    removeFinance(id) {
-        this.removeItem(this.FINANCE_KEY, id);
-    },
-
-    /**
-     * Get media data
-     * @returns {Array} - Array of media entries
-     */
-    getMedia() {
-        return this.getData(this.MEDIA_KEY);
-    },
-
-    /**
-     * Save media entry
-     * @param {Object} entry - Media entry object
-     */
-    addMedia(entry) {
-        return this.addItem(this.MEDIA_KEY, entry);
-    },
-
-    /**
-     * Remove media entry
-     * @param {string} id - ID of the entry to remove
-     */
-    removeMedia(id) {
-        this.removeItem(this.MEDIA_KEY, id);
-    },
-
-    /**
-     * Clear all data (useful for testing or reset functionality)
-     */
-    clearAll() {
-        localStorage.removeItem(this.FINANCE_KEY);
-        localStorage.removeItem(this.MEDIA_KEY);
     }
 };
+

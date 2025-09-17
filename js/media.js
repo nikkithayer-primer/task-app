@@ -1,6 +1,6 @@
 /**
  * Media module for handling media consumption logging
- * This module manages the media form, validation, and display
+ * Manages media form, validation, and display
  */
 
 const Media = {
@@ -17,24 +17,14 @@ const Media = {
      */
     bindEvents() {
         const form = document.getElementById('media-form');
+        const worthBtn = document.getElementById('media-worth');
+
         if (form) {
             form.addEventListener('submit', (e) => this.handleSubmit(e));
         }
 
-        // Bind worth-it button event
-        const worthItBtn = document.getElementById('media-worth-it');
-        if (worthItBtn) {
-            worthItBtn.addEventListener('click', (e) => this.handleWorthItToggle(e));
-        }
-
-        // Bind delete button events (delegated event handling)
-        const logContainer = document.getElementById('media-log');
-        if (logContainer) {
-            logContainer.addEventListener('click', (e) => {
-                if (e.target.classList.contains('delete-btn')) {
-                    this.handleDelete(e);
-                }
-            });
+        if (worthBtn) {
+            worthBtn.addEventListener('click', (e) => this.toggleWorth(e));
         }
     },
 
@@ -42,46 +32,33 @@ const Media = {
      * Handle form submission
      * @param {Event} e - Form submit event
      */
-    handleSubmit(e) {
+    async handleSubmit(e) {
         e.preventDefault();
         
         const formData = this.getFormData();
         
-        if (this.validateFormData(formData)) {
+        if (!this.validateFormData(formData)) {
+            return;
+        }
+
+        try {
+            UI.showLoading(true);
+            
             const entry = {
                 description: formData.description,
                 worthIt: formData.worthIt
             };
 
-            // Save to storage
-            const savedEntry = Storage.addMedia(entry);
+            await Storage.addMedia(entry);
             
-            // Update display
-            this.loadEntries();
-            
-            // Clear form
             UI.clearForm('media-form');
+            this.loadEntries();
+            UI.showSuccess('Media entry added successfully!');
             
-            // Show success message
-            const submitBtn = document.querySelector('#media-form .submit-btn');
-            UI.showSuccessMessage('Media log added successfully!', submitBtn);
-        }
-    },
-
-    /**
-     * Handle worth-it button toggle
-     * @param {Event} e - Click event
-     */
-    handleWorthItToggle(e) {
-        const button = e.target;
-        const isWorthIt = button.getAttribute('data-worth') === 'true';
-        
-        if (isWorthIt) {
-            button.setAttribute('data-worth', 'false');
-            button.textContent = 'Not worth it';
-        } else {
-            button.setAttribute('data-worth', 'true');
-            button.textContent = 'Worth it';
+        } catch (error) {
+            UI.showError('Failed to add media entry');
+        } finally {
+            UI.showLoading(false);
         }
     },
 
@@ -92,7 +69,7 @@ const Media = {
     getFormData() {
         return {
             description: document.getElementById('media-description').value.trim(),
-            worthIt: document.getElementById('media-worth-it').getAttribute('data-worth') === 'true'
+            worthIt: document.getElementById('media-worth').dataset.worth === 'true'
         };
     },
 
@@ -103,7 +80,7 @@ const Media = {
      */
     validateFormData(data) {
         if (!data.description) {
-            this.showError('Please enter what you watched');
+            UI.showError('Please enter what you watched');
             return false;
         }
 
@@ -111,177 +88,95 @@ const Media = {
     },
 
     /**
-     * Show error message
-     * @param {string} message - Error message to display
-     */
-    showError(message) {
-        // Create or update error message
-        let errorDiv = document.querySelector('.media-error');
-        
-        if (!errorDiv) {
-            errorDiv = document.createElement('div');
-            errorDiv.className = 'media-error';
-            errorDiv.style.cssText = `
-                background: #dc3545;
-                color: white;
-                padding: 10px;
-                border-radius: 5px;
-                margin-bottom: 15px;
-                font-size: 14px;
-            `;
-            
-            const form = document.getElementById('media-form');
-            form.insertBefore(errorDiv, form.firstChild);
-        }
-
-        errorDiv.textContent = message;
-
-        // Remove error after 5 seconds
-        setTimeout(() => {
-            if (errorDiv.parentNode) {
-                errorDiv.parentNode.removeChild(errorDiv);
-            }
-        }, 5000);
-    },
-
-    /**
-     * Handle delete button click
+     * Toggle worth it button
      * @param {Event} e - Click event
      */
-    handleDelete(e) {
-        const entryElement = e.target.closest('.log-entry');
-        const entryId = entryElement.getAttribute('data-id');
+    toggleWorth(e) {
+        const button = e.target;
+        const isWorthIt = button.dataset.worth === 'true';
         
-        if (confirm('Are you sure you want to delete this media log?')) {
-            Storage.removeMedia(entryId);
-            this.loadEntries();
+        if (isWorthIt) {
+            button.dataset.worth = 'false';
+            button.textContent = '👎';
+        } else {
+            button.dataset.worth = 'true';
+            button.textContent = '👍';
         }
     },
 
     /**
      * Load and display media entries
      */
-    loadEntries() {
-        const entries = Storage.getMedia();
-        UI.displayEntries(entries, 'media-log', 'media');
+    async loadEntries() {
+        try {
+            const entries = await Storage.getMedia();
+            // Sort by timestamp, newest first
+            entries.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            UI.displayMedia(entries);
+        } catch (error) {
+            UI.showError('Failed to load media entries');
+        }
     },
 
     /**
      * Get media statistics (for future analytics)
-     * @returns {Object} - Statistics object
+     * @returns {Promise<Object>} - Statistics object
      */
-    getStatistics() {
-        const entries = Storage.getMedia();
-        
-        if (entries.length === 0) {
-            return {
-                total: 0,
-                worthItCount: 0,
-                notWorthItCount: 0,
-                worthItPercentage: 0
-            };
-        }
-
-        const stats = entries.reduce((acc, entry) => {
-            if (entry.worthIt) {
-                acc.worthItCount++;
-            } else {
-                acc.notWorthItCount++;
+    async getStatistics() {
+        try {
+            const entries = await Storage.getMedia();
+            
+            if (entries.length === 0) {
+                return {
+                    total: 0,
+                    worthItCount: 0,
+                    notWorthItCount: 0,
+                    worthItPercentage: 0
+                };
             }
-            return acc;
-        }, {
-            worthItCount: 0,
-            notWorthItCount: 0
-        });
 
-        stats.total = entries.length;
-        stats.worthItPercentage = (stats.worthItCount / stats.total) * 100;
+            const stats = entries.reduce((acc, entry) => {
+                if (entry.worthIt) {
+                    acc.worthItCount++;
+                } else {
+                    acc.notWorthItCount++;
+                }
+                return acc;
+            }, {
+                worthItCount: 0,
+                notWorthItCount: 0
+            });
 
-        return stats;
-    },
+            stats.total = entries.length;
+            stats.worthItPercentage = (stats.worthItCount / stats.total) * 100;
 
-    /**
-     * Get media by time period (for future analytics)
-     * @param {number} days - Number of days to look back
-     * @returns {Array} - Filtered entries
-     */
-    getRecentMedia(days = 7) {
-        const entries = Storage.getMedia();
-        const cutoffDate = new Date();
-        cutoffDate.setDate(cutoffDate.getDate() - days);
-
-        return entries.filter(entry => {
-            const entryDate = new Date(entry.timestamp);
-            return entryDate >= cutoffDate;
-        });
+            return stats;
+        } catch (error) {
+            console.error('Failed to get statistics:', error);
+            return null;
+        }
     },
 
     /**
      * Search media entries (for future enhancement)
      * @param {string} query - Search query
-     * @returns {Array} - Matching entries
+     * @returns {Promise<Array>} - Matching entries
      */
-    searchMedia(query) {
-        const entries = Storage.getMedia();
-        const searchTerm = query.toLowerCase();
+    async searchMedia(query) {
+        try {
+            const entries = await Storage.getMedia();
+            const searchTerm = query.toLowerCase();
 
-        return entries.filter(entry => 
-            entry.description.toLowerCase().includes(searchTerm)
-        );
-    },
-
-    /**
-     * Export media data (for future enhancement)
-     * @returns {string} - CSV formatted data
-     */
-    exportData() {
-        const entries = Storage.getMedia();
-        
-        if (entries.length === 0) {
-            return 'No data to export';
+            return entries.filter(entry => 
+                entry.description.toLowerCase().includes(searchTerm)
+            );
+        } catch (error) {
+            console.error('Failed to search media:', error);
+            return [];
         }
-
-        const headers = ['Date', 'Description', 'Worth It'];
-        const csvData = [headers.join(',')];
-
-        entries.forEach(entry => {
-            const row = [
-                new Date(entry.timestamp).toLocaleDateString(),
-                `"${entry.description}"`,
-                entry.worthIt ? 'Yes' : 'No'
-            ];
-            csvData.push(row.join(','));
-        });
-
-        return csvData.join('\n');
-    },
-
-    /**
-     * Get media consumption trends (for future analytics)
-     * @returns {Object} - Trend data
-     */
-    getTrends() {
-        const entries = Storage.getMedia();
-        const now = new Date();
-        const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
-        
-        const recentEntries = entries.filter(entry => 
-            new Date(entry.timestamp) >= thirtyDaysAgo
-        );
-
-        // Group by day
-        const dailyCount = {};
-        recentEntries.forEach(entry => {
-            const date = new Date(entry.timestamp).toDateString();
-            dailyCount[date] = (dailyCount[date] || 0) + 1;
-        });
-
-        return {
-            totalLast30Days: recentEntries.length,
-            averagePerDay: recentEntries.length / 30,
-            dailyBreakdown: dailyCount,
-            worthItRatio: recentEntries.length > 0 ? 
-                (recentEntries.filter(e => e.worthIt).length / recentEntries.length) * 100 : 0
-        };
     }
 };
+
+// Export for global access
+window.Media = Media;
+

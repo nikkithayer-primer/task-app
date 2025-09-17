@@ -1,155 +1,146 @@
 /**
  * Main application file
- * This file initializes all modules and handles global app functionality
+ * Coordinates all modules and initializes the app
  */
 
 const App = {
     /**
      * Initialize the application
      */
-    init() {
-        // Wait for DOM to be fully loaded
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => this.start());
-        } else {
-            this.start();
-        }
-    },
-
-    /**
-     * Start the application
-     */
-    start() {
-        console.log('Task Tracker App starting...');
+    async init() {
+        console.log('Task Tracker initializing...');
         
         try {
-            // Initialize all modules
+            // Initialize storage system
+            Storage.init();
+            
+            // Initialize UI components
             UI.init();
+            
+            // Initialize swipe functionality
             Swipe.init();
+            
+            // Initialize finance module
             Finance.init();
+            
+            // Initialize media module
             Media.init();
             
-            // Add CSS animation for success messages
-            this.addGlobalStyles();
+            // Set up error handling
+            this.setupErrorHandling();
             
-            console.log('Task Tracker App initialized successfully');
+            // Set up service worker for offline functionality (optional)
+            this.setupServiceWorker();
+            
+            console.log('Task Tracker initialized successfully');
+            
         } catch (error) {
-            console.error('Error initializing app:', error);
-            this.showErrorMessage('Failed to initialize the application. Please refresh the page.');
+            console.error('Failed to initialize app:', error);
+            UI.showError('Failed to initialize application');
         }
     },
 
     /**
-     * Add global CSS styles dynamically
+     * Set up global error handling
      */
-    addGlobalStyles() {
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes fadeInOut {
-                0% { opacity: 0; transform: translateY(-10px); }
-                20% { opacity: 1; transform: translateY(0); }
-                80% { opacity: 1; transform: translateY(0); }
-                100% { opacity: 0; transform: translateY(-10px); }
-            }
-            
-            .delete-btn:hover {
-                background-color: #dc3545 !important;
-                color: white !important;
-                border-radius: 3px !important;
-            }
-        `;
-        document.head.appendChild(style);
+    setupErrorHandling() {
+        window.addEventListener('error', (event) => {
+            console.error('Global error:', event.error);
+            UI.showError('An unexpected error occurred');
+        });
+
+        window.addEventListener('unhandledrejection', (event) => {
+            console.error('Unhandled promise rejection:', event.reason);
+            UI.showError('An unexpected error occurred');
+            event.preventDefault();
+        });
     },
 
     /**
-     * Show global error message
-     * @param {string} message - Error message to display
+     * Set up service worker for offline functionality
      */
-    showErrorMessage(message) {
-        const errorDiv = document.createElement('div');
-        errorDiv.style.cssText = `
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #dc3545;
-            color: white;
-            padding: 15px 20px;
-            border-radius: 5px;
-            z-index: 9999;
-            font-weight: 500;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        `;
-        errorDiv.textContent = message;
-        
-        document.body.appendChild(errorDiv);
-        
-        setTimeout(() => {
-            if (errorDiv.parentNode) {
-                errorDiv.parentNode.removeChild(errorDiv);
-            }
-        }, 5000);
+    setupServiceWorker() {
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then((registration) => {
+                    console.log('Service Worker registered:', registration);
+                })
+                .catch((error) => {
+                    console.log('Service Worker registration failed:', error);
+                });
+        }
     },
 
     /**
-     * Get application statistics (for future dashboard)
-     * @returns {Object} - Combined statistics
+     * Get app statistics (for future dashboard)
+     * @returns {Promise<Object>} - Combined statistics
      */
-    getAppStatistics() {
-        return {
-            finance: Finance.getStatistics(),
-            media: Media.getStatistics(),
-            lastUpdated: new Date().toISOString()
-        };
-    },
-
-    /**
-     * Export all data (for future enhancement)
-     * @returns {Object} - All app data
-     */
-    exportAllData() {
-        return {
-            finances: Storage.getFinances(),
-            media: Storage.getMedia(),
-            exportDate: new Date().toISOString()
-        };
-    },
-
-    /**
-     * Import data (for future enhancement)
-     * @param {Object} data - Data to import
-     */
-    importData(data) {
+    async getAppStatistics() {
         try {
-            if (data.finances && Array.isArray(data.finances)) {
-                Storage.saveData(Storage.FINANCE_KEY, data.finances);
-                Finance.loadEntries();
-            }
-            
-            if (data.media && Array.isArray(data.media)) {
-                Storage.saveData(Storage.MEDIA_KEY, data.media);
-                Media.loadEntries();
-            }
-            
-            console.log('Data imported successfully');
+            const [financeStats, mediaStats] = await Promise.all([
+                Finance.getStatistics(),
+                Media.getStatistics()
+            ]);
+
+            return {
+                finance: financeStats,
+                media: mediaStats,
+                lastUpdated: new Date().toISOString()
+            };
         } catch (error) {
-            console.error('Error importing data:', error);
-            this.showErrorMessage('Failed to import data');
+            console.error('Failed to get app statistics:', error);
+            return null;
         }
     },
 
     /**
-     * Clear all application data
+     * Export all data (for backup purposes)
+     * @returns {Promise<Object>} - All app data
      */
-    clearAllData() {
-        if (confirm('Are you sure you want to clear all data? This cannot be undone.')) {
-            Storage.clearAll();
-            Finance.loadEntries();
-            Media.loadEntries();
-            console.log('All data cleared');
+    async exportData() {
+        try {
+            UI.showLoading(true);
+            
+            const [finances, media] = await Promise.all([
+                Storage.getFinances(),
+                Storage.getMedia()
+            ]);
+
+            const exportData = {
+                finances,
+                media,
+                exportDate: new Date().toISOString(),
+                version: '1.0.0'
+            };
+
+            // Create downloadable file
+            const dataStr = JSON.stringify(exportData, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `task-tracker-backup-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            UI.showSuccess('Data exported successfully');
+            
+        } catch (error) {
+            UI.showError('Failed to export data');
+        } finally {
+            UI.showLoading(false);
         }
     }
 };
 
-// Initialize the app
-App.init();
+// Initialize app when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    App.init();
+});
+
+// Export for global access
+window.App = App;
+

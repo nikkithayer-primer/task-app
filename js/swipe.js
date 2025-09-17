@@ -1,6 +1,6 @@
 /**
  * Swipe module for handling touch and mouse gestures
- * Provides swipe-to-delete functionality for table rows on all devices
+ * Provides swipe-to-delete functionality for table rows
  */
 
 const Swipe = {
@@ -8,23 +8,7 @@ const Swipe = {
      * Initialize swipe functionality
      */
     init() {
-        this.bindSwipeEvents();
-    },
-
-    /**
-     * Bind swipe event listeners to table containers
-     */
-    bindSwipeEvents() {
-        const financeTable = document.getElementById('finance-table-body');
-        const mediaTable = document.getElementById('media-table-body');
-
-        if (financeTable) {
-            this.addSwipeToTable(financeTable, 'finance');
-        }
-
-        if (mediaTable) {
-            this.addSwipeToTable(mediaTable, 'media');
-        }
+        console.log('Swipe module initialized');
     },
 
     /**
@@ -33,6 +17,9 @@ const Swipe = {
      * @param {string} type - Type of table ('finance' or 'media')
      */
     addSwipeToTable(tableBody, type) {
+        // Remove existing listeners to prevent duplicates
+        this.removeSwipeFromTable(tableBody);
+
         // Touch events for mobile
         tableBody.addEventListener('touchstart', (e) => this.handleStart(e), { passive: true });
         tableBody.addEventListener('touchmove', (e) => this.handleMove(e), { passive: false });
@@ -46,12 +33,22 @@ const Swipe = {
     },
 
     /**
+     * Remove swipe functionality from a table
+     * @param {HTMLElement} tableBody - Table body element
+     */
+    removeSwipeFromTable(tableBody) {
+        // Clone and replace to remove all event listeners
+        const newTableBody = tableBody.cloneNode(true);
+        tableBody.parentNode.replaceChild(newTableBody, tableBody);
+    },
+
+    /**
      * Handle start event (touch or mouse)
      * @param {TouchEvent|MouseEvent} e - Touch or mouse event
      */
     handleStart(e) {
-        const row = e.target.closest('tr');
-        if (!row || !row.hasAttribute('data-id')) return;
+        const row = e.target.closest('.swipe-row');
+        if (!row) return;
 
         // Get coordinates from touch or mouse event
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -62,11 +59,10 @@ const Swipe = {
             startY: clientY,
             currentX: clientX,
             startTime: Date.now(),
-            isMouseDown: !e.touches // Track if this is a mouse drag
+            isMouseDown: !e.touches
         };
 
-        row.classList.add('table-row-swipeable');
-        this.addDeleteIndicator(row);
+        row.classList.add('swiping');
     },
 
     /**
@@ -74,7 +70,7 @@ const Swipe = {
      * @param {TouchEvent|MouseEvent} e - Touch or mouse event
      */
     handleMove(e) {
-        const row = e.target.closest('tr');
+        const row = e.target.closest('.swipe-row');
         if (!row || !row._swipeData) return;
 
         // For mouse events, only proceed if mouse is down
@@ -94,15 +90,14 @@ const Swipe = {
         e.preventDefault();
 
         row._swipeData.currentX = clientX;
-        row.classList.add('swiping');
 
         // Only allow left swipes (negative deltaX)
         if (deltaX < 0) {
-            const swipeDistance = Math.min(Math.abs(deltaX), 100);
+            const swipeDistance = Math.min(Math.abs(deltaX), Config.SWIPE_THRESHOLD);
             row.style.transform = `translateX(-${swipeDistance}px)`;
-
+            
             // Show delete state when swiped far enough
-            if (swipeDistance > 50) {
+            if (swipeDistance > Config.SWIPE_THRESHOLD * 0.6) {
                 row.classList.add('swipe-delete');
             } else {
                 row.classList.remove('swipe-delete');
@@ -116,7 +111,7 @@ const Swipe = {
      * @param {string} type - Type of table ('finance' or 'media')
      */
     handleEnd(e, type) {
-        const row = e.target.closest('tr');
+        const row = e.target.closest('.swipe-row');
         if (!row || !row._swipeData) return;
 
         const deltaX = row._swipeData.currentX - row._swipeData.startX;
@@ -126,7 +121,9 @@ const Swipe = {
         row.classList.remove('swiping');
 
         // Determine if this was a delete swipe
-        const shouldDelete = deltaX < -50 && swipeDistance > 50 && swipeTime < 1000;
+        const shouldDelete = deltaX < -Config.SWIPE_THRESHOLD * 0.6 && 
+                           swipeDistance > Config.SWIPE_THRESHOLD * 0.6 && 
+                           swipeTime < Config.SWIPE_TIME_LIMIT;
 
         if (shouldDelete) {
             this.performDelete(row, type);
@@ -134,67 +131,29 @@ const Swipe = {
             // Reset row position
             row.style.transform = '';
             row.classList.remove('swipe-delete');
-            this.removeDeleteIndicator(row);
         }
 
         // Clean up
-        row.classList.remove('table-row-swipeable');
         delete row._swipeData;
     },
 
     /**
-     * Add delete indicator to row
-     * @param {HTMLElement} row - Table row element
-     */
-    addDeleteIndicator(row) {
-        if (row.querySelector('.swipe-delete-indicator')) return;
-
-        const indicator = document.createElement('div');
-        indicator.className = 'swipe-delete-indicator';
-        indicator.innerHTML = 'Delete';
-        row.style.position = 'relative';
-        row.appendChild(indicator);
-    },
-
-    /**
-     * Remove delete indicator from row
-     * @param {HTMLElement} row - Table row element
-     */
-    removeDeleteIndicator(row) {
-        const indicator = row.querySelector('.swipe-delete-indicator');
-        if (indicator) {
-            indicator.remove();
-        }
-    },
-
-    /**
      * Perform delete action
-     * @param {HTMLElement} row - Table row element
-     * @param {string} type - Type of table ('finance' or 'media')
+     * @param {HTMLElement} row - Row to delete
+     * @param {string} type - Type of entry
      */
-    performDelete(row, type) {
-        const entryId = row.getAttribute('data-id');
-        
+    async performDelete(row, type) {
         // Add delete animation
         row.style.transform = 'translateX(-100%)';
         row.style.opacity = '0';
-
-        setTimeout(() => {
-            if (type === 'finance') {
-                Storage.removeFinance(entryId);
-                Finance.loadEntries();
-            } else if (type === 'media') {
-                Storage.removeMedia(entryId);
-                Media.loadEntries();
-            }
+        
+        // Wait for animation then delete
+        setTimeout(async () => {
+            await UI.deleteEntry(row, type);
         }, 300);
-    },
-
-    /**
-     * Check if device supports touch
-     * @returns {boolean} - Whether touch is supported
-     */
-    isTouchDevice() {
-        return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
     }
 };
+
+// Export for global access
+window.Swipe = Swipe;
+
