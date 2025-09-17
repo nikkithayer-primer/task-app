@@ -68,12 +68,34 @@ const UI = {
         const diffHours = Math.floor(diffMs / 3600000);
         const diffDays = Math.floor(diffMs / 86400000);
 
-        if (diffMins < 1) return 'Just now';
-        if (diffMins < 60) return `${diffMins} min${diffMins !== 1 ? 's' : ''} ago`;
-        if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
-        if (diffDays < 7) return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
-        
-        return date.toLocaleDateString();
+        // For very recent entries, show relative time
+        if (diffMins < 1) return 'Now';
+        if (diffMins < 60) return `${diffMins}m`;
+        if (diffHours < 24) return `${diffHours}h`;
+
+        // For entries from today, show time
+        const today = new Date();
+        if (date.toDateString() === today.toDateString()) {
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+        }
+
+        // For entries from yesterday
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        if (date.toDateString() === yesterday.toDateString()) {
+            const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+            return `Yest ${time}`;
+        }
+
+        // For this week, show day abbreviation and time
+        if (diffDays < 7) {
+            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+            return `${dayNames[date.getDay()]} ${time}`;
+        }
+
+        // For older entries, show compact date
+        return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
     },
 
     /**
@@ -210,6 +232,11 @@ const UI = {
             const row = this.createFinanceTableRow(entry);
             tableBody.appendChild(row);
         });
+
+        // Reinitialize swipe events for mobile
+        if (typeof Swipe !== 'undefined') {
+            Swipe.addSwipeToTable(tableBody, 'finance');
+        }
     },
 
     /**
@@ -324,6 +351,11 @@ const UI = {
             const row = this.createMediaTableRow(entry);
             tableBody.appendChild(row);
         });
+
+        // Reinitialize swipe events for mobile
+        if (typeof Swipe !== 'undefined') {
+            Swipe.addSwipeToTable(tableBody, 'media');
+        }
     },
 
     /**

@@ -25,6 +25,7 @@ const App = {
         try {
             // Initialize all modules
             UI.init();
+            Swipe.init();
             Finance.init();
             Media.init();
             

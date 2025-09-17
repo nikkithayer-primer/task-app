@@ -21,19 +21,16 @@
             <!-- Finances Tab -->
             <div class="tab-content active" id="finances">
                 <div class="form-section">
-                    <h2>Log Financial Transaction</h2>
                     <form id="finance-form">
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="finance-description">Description:</label>
                                 <input type="text" id="finance-description" placeholder="What did you spend money on?" required tabindex="1">
                             </div>
                             <div class="form-group">
-                                <label for="finance-amount">Amount ($):</label>
-                                <input type="number" id="finance-amount" step="0.01" placeholder="0.00" required tabindex="2">
+                                <input type="number" id="finance-amount" step="0.01" placeholder="Amount ($)" required tabindex="2">
                             </div>
                             <div class="form-group toggle-group">
-                                <label for="finance-worth-it">Worth it?</label>
+                                <span class="toggle-label-text">Worth it?</span>
                                 <div class="toggle-container">
                                     <input type="checkbox" id="finance-worth-it" class="toggle" tabindex="3">
                                     <label for="finance-worth-it" class="toggle-label">
@@ -45,7 +42,7 @@
                             <div class="form-group">
                                 <button type="submit" class="submit-btn" tabindex="4" title="Add Transaction">
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                        <path d="M2 21L23 12L2 3V10L17 12L2 14V21Z" fill="#0C2155"/>
+                                        <path d="M2 21L23 12L2 3V10L17 12L2 14V21Z" fill="currentColor"/>
                                     </svg>
                                 </button>
                             </div>
@@ -63,7 +60,7 @@
                                     <th>Description</th>
                                     <th>Amount</th>
                                     <th>Worth It</th>
-                                    <th>Actions</th>
+                                    <th class="actions-header">Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="finance-table-body">
@@ -80,15 +77,13 @@
             <!-- Media Tab -->
             <div class="tab-content" id="media">
                 <div class="form-section">
-                    <h2>Log Media Watched</h2>
                     <form id="media-form">
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="media-description">What did you watch?</label>
-                                <input type="text" id="media-description" placeholder="Movie, show, video, etc." required tabindex="1">
+                                <input type="text" id="media-description" placeholder="What did you watch?" required tabindex="1">
                             </div>
                             <div class="form-group toggle-group">
-                                <label for="media-worth-it">Worth it?</label>
+                                <span class="toggle-label-text">Worth it?</span>
                                 <div class="toggle-container">
                                     <input type="checkbox" id="media-worth-it" class="toggle" tabindex="2">
                                     <label for="media-worth-it" class="toggle-label">
@@ -100,7 +95,7 @@
                             <div class="form-group">
                                 <button type="submit" class="submit-btn" tabindex="3" title="Add Media Log">
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                        <path d="M2 21L23 12L2 3V10L17 12L2 14V21Z" fill="#0C2155"/>
+                                        <path d="M2 21L23 12L2 3V10L17 12L2 14V21Z" fill="currentColor"/>
                                     </svg>
                                 </button>
                             </div>
@@ -117,7 +112,7 @@
                                     <th>Date</th>
                                     <th>Description</th>
                                     <th>Worth It</th>
-                                    <th>Actions</th>
+                                    <th class="actions-header">Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="media-table-body">
@@ -135,6 +130,7 @@
 
     <script src="js/storage.js"></script>
     <script src="js/ui.js"></script>
+    <script src="js/swipe.js"></script>
     <script src="js/finance.js"></script>
     <script src="js/media.js"></script>
     <script src="js/app.js"></script>
