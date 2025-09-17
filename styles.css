@@ -11,8 +11,8 @@
 :root {
     /* Primary Colors */
     --color-primary-text: #0C2155;
-    --color-primary-bg: #F3EFDF;
-    --color-accent: #6DDBD4;
+    --color-primary-bg: #F4F0E2;
+    --color-accent: #89DFD9;
     --color-error: #DF4F15;
     
     /* Secondary Colors */
@@ -32,8 +32,8 @@
 body {
     font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     line-height: 1.6;
-    color: var(--color-primary-text);
-    background: var(--color-accent);
+    color: var(--color-primary-primary-bg);
+    background: var(--color-primary-text);
     min-height: 100vh;
 }
 
@@ -47,7 +47,7 @@ body {
 header {
     text-align: center;
     margin-bottom: 30px;
-    color: var(--color-primary-text);
+    color: var(--color-primary-bg);
 }
 
 header h1 {
@@ -330,17 +330,17 @@ header p {
     padding: 40px 20px;
 }
 
-/* Finance Table Styles - Minimal */
-.finance-table {
+/* Shared Table Styles */
+.finance-table,
+.media-table {
     width: 100%;
     border-collapse: collapse;
     margin-top: 10px;
     background: var(--color-primary-bg);
 }
 
-.finance-table th {
-    background: var(--color-accent);
-    color: var(--color-primary-text);
+.finance-table th,
+.media-table th {
     padding: 8px 12px;
     text-align: left;
     font-weight: 500;
@@ -348,33 +348,39 @@ header p {
     border-bottom: 1px solid var(--color-border-medium);
 }
 
-.finance-table th:last-child {
+.finance-table th:last-child,
+.media-table th:last-child {
     text-align: center;
 }
 
-.finance-table td {
+.finance-table td,
+.media-table td {
     padding: 8px 12px;
     border-bottom: 1px solid var(--color-border-subtle);
     vertical-align: middle;
 }
 
-.finance-table tbody tr:hover {
+.finance-table tbody tr:hover,
+.media-table tbody tr:hover {
     background-color: var(--color-hover-bg);
 }
 
-.finance-table tbody tr:last-child td {
+.finance-table tbody tr:last-child td,
+.media-table tbody tr:last-child td {
     border-bottom: none;
 }
 
-.finance-table .table-date {
+.finance-table .table-date,
+.media-table .table-date {
     color: var(--color-muted-text);
     font-size: 0.85rem;
     white-space: nowrap;
 }
 
-.finance-table .table-description {
+.finance-table .table-description,
+.media-table .table-description {
     color: var(--color-primary-text);
-    max-width: 250px;
+    max-width: 280px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -386,24 +392,29 @@ header p {
     text-align: right;
 }
 
-.finance-table .table-worth {
+.finance-table .table-worth,
+.media-table .table-worth {
     text-align: center;
 }
 
-.finance-table .worth-yes {
+.finance-table .worth-yes,
+.media-table .worth-yes {
     color: var(--color-success);
 }
 
-.finance-table .worth-no {
+.finance-table .worth-no,
+.media-table .worth-no {
     color: var(--color-error);
 }
 
-.finance-table .table-actions {
+.finance-table .table-actions,
+.media-table .table-actions {
     text-align: center;
     width: 60px;
 }
 
-.finance-table .delete-btn {
+.finance-table .delete-btn,
+.media-table .delete-btn {
     background: none;
     border: none;
     cursor: pointer;
@@ -413,90 +424,9 @@ header p {
     opacity: 0.7;
 }
 
-.finance-table .delete-btn:hover {
-    color: var(--color-error);
-    opacity: 1;
-}
-
-/* Media Table Styles - Same as Finance Table */
-.media-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 10px;
-    background: var(--color-primary-bg);
-}
-
-.media-table th {
-    background: var(--color-accent);
-    color: var(--color-primary-text);
-    padding: 8px 12px;
-    text-align: left;
-    font-weight: 500;
-    font-size: 0.9rem;
-    border-bottom: 1px solid var(--color-border-medium);
-}
-
-.media-table th:last-child {
-    text-align: center;
-}
-
-.media-table td {
-    padding: 8px 12px;
-    border-bottom: 1px solid #f1f3f4;
-    vertical-align: middle;
-}
-
-.media-table tbody tr:hover {
-    background-color: #f8f9fa;
-}
-
-.media-table tbody tr:last-child td {
-    border-bottom: none;
-}
-
-.media-table .table-date {
-    color: #6c757d;
-    font-size: 0.85rem;
-    white-space: nowrap;
-}
-
-.media-table .table-description {
-    color: #0C2155;
-    max-width: 300px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.media-table .table-worth {
-    text-align: center;
-}
-
-.media-table .worth-yes {
-    color: #28a745;
-}
-
-.media-table .worth-no {
-    color: #DF4F15;
-}
-
-.media-table .table-actions {
-    text-align: center;
-    width: 60px;
-}
-
-.media-table .delete-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: 14px;
-    padding: 4px 6px;
-    color: #6c757d;
-    opacity: 0.7;
-}
-
+.finance-table .delete-btn:hover,
 .media-table .delete-btn:hover {
-    color: #DF4F15;
+    color: var(--color-error);
     opacity: 1;
 }
 
