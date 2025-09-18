@@ -418,11 +418,10 @@ const UI = {
             
             if (type === 'finance') {
                 await Storage.deleteFinance(id);
-                Finance.loadEntries();
             } else {
                 await Storage.deleteMedia(id);
-                Media.loadEntries();
             }
+            // Note: UI will update automatically via Firebase real-time listeners
             
             this.showSuccess('Entry deleted successfully');
         } catch (error) {

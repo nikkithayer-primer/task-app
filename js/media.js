@@ -52,8 +52,8 @@ const Media = {
             await Storage.addMedia(entry);
             
             UI.clearForm('media-form');
-            this.loadEntries();
             UI.showSuccess('Media entry added successfully!');
+            // Note: UI will update automatically via Firebase real-time listeners
             
         } catch (error) {
             UI.showError('Failed to add media entry');
