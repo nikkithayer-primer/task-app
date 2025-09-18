@@ -584,7 +584,7 @@ body {
     
     .tab-container {
         position: static;
-        box-shadow: 0 2px 8px rgba(52, 73, 94, 0.1);
+        box-shadow: none;
         border-radius: 12px;
         margin-bottom: 20px;
     }
