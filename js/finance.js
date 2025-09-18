@@ -54,6 +54,7 @@ const Finance = {
             
             UI.clearForm('finances-form');
             UI.showSuccess('Finance entry added successfully!');
+            UI.scrollToTop(); // Scroll to show the new entry at the top
             // Note: UI will update automatically via Firebase real-time listeners
             
         } catch (error) {

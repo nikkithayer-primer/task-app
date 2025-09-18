@@ -287,7 +287,7 @@ const UI = {
         const day = date.getDate().toString().padStart(2, '0');
         const month = (date.getMonth() + 1).toString().padStart(2, '0');
         const year = date.getFullYear().toString().slice(-2);
-        return `${day}/${month}/${year}`;
+        return `${month}/${day}/${year}`;
     },
 
     /**
@@ -351,6 +351,20 @@ const UI = {
         // Simple error feedback - could be enhanced with toast notifications
         console.error('Error:', message);
         alert(`Error: ${message}`);
+    },
+
+    /**
+     * Scroll to top of page to show newly added entries
+     * Only scrolls on mobile devices to avoid disrupting desktop experience
+     */
+    scrollToTop() {
+        // Only scroll on mobile (when tabs are fixed at top)
+        if (window.innerWidth < 768) {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        }
     },
 
     /**

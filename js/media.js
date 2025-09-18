@@ -53,6 +53,7 @@ const Media = {
             
             UI.clearForm('media-form');
             UI.showSuccess('Media entry added successfully!');
+            UI.scrollToTop(); // Scroll to show the new entry at the top
             // Note: UI will update automatically via Firebase real-time listeners
             
         } catch (error) {
