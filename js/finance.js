@@ -9,7 +9,7 @@ const Finance = {
      */
     init() {
         this.bindEvents();
-        this.loadEntries();
+        // Note: loadEntries() is handled by Firebase real-time listeners in app.js
     },
 
     /**
@@ -53,8 +53,8 @@ const Finance = {
             await Storage.addFinance(entry);
             
             UI.clearForm('finances-form');
-            this.loadEntries();
             UI.showSuccess('Finance entry added successfully!');
+            // Note: UI will update automatically via Firebase real-time listeners
             
         } catch (error) {
             UI.showError('Failed to add finance entry');

@@ -9,7 +9,7 @@ const Media = {
      */
     init() {
         this.bindEvents();
-        this.loadEntries();
+        // Note: loadEntries() is handled by Firebase real-time listeners in app.js
     },
 
     /**

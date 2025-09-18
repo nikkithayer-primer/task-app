@@ -74,10 +74,6 @@ const UI = {
                     this.showCustomValidation(input);
                 }
             });
-
-            input.addEventListener('focus', () => {
-                this.markAsTouched(input);
-            });
         });
     },
 

@@ -17,19 +17,42 @@ const Swipe = {
      * @param {string} type - Type of table ('finance' or 'media')
      */
     addSwipeToTable(tableBody, type) {
+        if (!tableBody) {
+            console.warn('Table body not found for swipe initialization');
+            return;
+        }
+
         // Remove existing listeners to prevent duplicates
         this.removeSwipeFromTable(tableBody);
 
-        // Touch events for mobile
-        tableBody.addEventListener('touchstart', (e) => this.handleStart(e), { passive: true });
-        tableBody.addEventListener('touchmove', (e) => this.handleMove(e), { passive: false });
-        tableBody.addEventListener('touchend', (e) => this.handleEnd(e, type), { passive: true });
-        
-        // Mouse events for desktop
-        tableBody.addEventListener('mousedown', (e) => this.handleStart(e), { passive: true });
-        tableBody.addEventListener('mousemove', (e) => this.handleMove(e), { passive: false });
-        tableBody.addEventListener('mouseup', (e) => this.handleEnd(e, type), { passive: true });
-        tableBody.addEventListener('mouseleave', (e) => this.handleEnd(e, type), { passive: true });
+        // Create handlers that we can track
+        const handlers = {
+            touchstart: (e) => this.handleStart(e),
+            touchmove: (e) => this.handleMove(e),
+            touchend: (e) => this.handleEnd(e, type),
+            mousedown: (e) => this.handleStart(e),
+            mousemove: (e) => this.handleMove(e),
+            mouseup: (e) => this.handleEnd(e, type),
+            mouseleave: (e) => this.handleEnd(e, type)
+        };
+
+        // Store listeners for later removal
+        tableBody._swipeListeners = [
+            { event: 'touchstart', handler: handlers.touchstart, options: { passive: true } },
+            { event: 'touchmove', handler: handlers.touchmove, options: { passive: false } },
+            { event: 'touchend', handler: handlers.touchend, options: { passive: true } },
+            { event: 'mousedown', handler: handlers.mousedown, options: { passive: true } },
+            { event: 'mousemove', handler: handlers.mousemove, options: { passive: false } },
+            { event: 'mouseup', handler: handlers.mouseup, options: { passive: true } },
+            { event: 'mouseleave', handler: handlers.mouseleave, options: { passive: true } }
+        ];
+
+        // Add event listeners
+        tableBody._swipeListeners.forEach(({ event, handler, options }) => {
+            tableBody.addEventListener(event, handler, options);
+        });
+
+        console.log(`Swipe events added to ${type} table`);
     },
 
     /**
@@ -37,9 +60,14 @@ const Swipe = {
      * @param {HTMLElement} tableBody - Table body element
      */
     removeSwipeFromTable(tableBody) {
-        // Clone and replace to remove all event listeners
-        const newTableBody = tableBody.cloneNode(true);
-        tableBody.parentNode.replaceChild(newTableBody, tableBody);
+        // Just remove the event listeners without cloning
+        // The new ones will be added when addSwipeToTable is called
+        if (tableBody._swipeListeners) {
+            tableBody._swipeListeners.forEach(({ event, handler, options }) => {
+                tableBody.removeEventListener(event, handler, options);
+            });
+            delete tableBody._swipeListeners;
+        }
     },
 
     /**
